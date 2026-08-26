@@ -3,18 +3,18 @@
 {% block content %}
 <div class="page-header">
     <h1>Report History</h1>
-    <p class="subtitle">Past analyses and aggregate confidence metrics.</p>
+    <p class="subtitle mt-1">Past analyses and aggregate confidence metrics.</p>
 </div>
 
 <div class="metrics-dashboard fade-in">
-    <div class="metric-card card">
+    <div class="metric-card card max-w-sm">
         <h3 class="metric-card-title">Low Confidence Explanations</h3>
         <p class="metric-card-value">{{ "{:.0f}".format(low_confidence_percentage) }}%</p>
-        <p class="metric-card-context">of reports have at least one low-confidence driver.</p>
+        <p class="metric-card-context mt-2 text-xs text-muted">of reports have at least one low-confidence driver.</p>
     </div>
 </div>
 
-<div class="card mt-6 fade-in" style="animation-delay: 0.1s">
+<div class="card mt-8 fade-in" style="animation-delay: 0.1s">
     <div class="table-responsive">
         <table class="data-table">
             <thead>
@@ -22,25 +22,29 @@
                     <th>Timestamp</th>
                     <th class="numeric">Drivers</th>
                     <th class="numeric">Avg. Confidence</th>
-                    <th>Low-confidence flag</th>
-                    <th class="action-cell">Action</th>
+                    <th>Status</th>
+                    <th class="action-cell"></th>
                 </tr>
             </thead>
             <tbody>
                 {% for submission in submissions %}
                 <tr>
-                    <td><span class="font-mono">{{ submission.timestamp }}</span></td>
+                    <td>
+                        <a href="{{ url_for('results', submission_id=submission.id) }}" class="font-mono text-white hover:text-brass-bright" style="text-decoration: none;">
+                            {{ submission.timestamp|india_date }}
+                        </a>
+                    </td>
                     <td class="numeric font-mono">{{ submission.computed_drivers|length }}</td>
                     <td class="numeric font-mono">{{ "{:.0f}".format(submission.avg_confidence) }}%</td>
                     <td>
                         {% if submission.low_confidence_flag %}
                         <span class="badge badge-warning">Needs Review</span>
                         {% else %}
-                        <span class="badge badge-success">No Flag</span>
+                        <span class="badge badge-success">Completed</span>
                         {% endif %}
                     </td>
                     <td class="action-cell">
-                        <a href="{{ url_for('results', submission_id=submission.id) }}" class="btn btn-sm btn-secondary">View Results</a>
+                        <a href="{{ url_for('results', submission_id=submission.id) }}" class="btn btn-sm btn-secondary">View</a>
                     </td>
                 </tr>
                 {% else %}
@@ -48,7 +52,7 @@
                     <td colspan="5">
                         <div class="empty-state">
                             <p>No reports yet — submit your first variance analysis.</p>
-                            <a href="{{ url_for('index') }}" class="btn btn-primary">Create First Analysis</a>
+                            <a href="/" class="btn btn-primary mt-4">Create First Analysis</a>
                         </div>
                     </td>
                 </tr>

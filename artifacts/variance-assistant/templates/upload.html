@@ -3,12 +3,12 @@
 {% block content %}
 <div class="page-header">
     <h1>Upload Workbook</h1>
-    <p class="subtitle font-mono mt-1">Import financial ledger for variance analysis</p>
+    <p class="subtitle mt-1">Import financial ledger for variance analysis</p>
 </div>
 
 {% if not is_mapping %}
 <!-- State 1: Upload -->
-<div class="card fade-in" style="max-width: 640px;">
+<div class="card fade-in max-w-2xl">
     {% if upload_error %}
     <div class="banner banner-error mb-0" style="border-bottom: 0; border-radius: var(--radius-md) var(--radius-md) 0 0;">
         <span class="banner-label">Error:</span>
@@ -17,11 +17,22 @@
     {% endif %}
     <form action="/upload" method="post" enctype="multipart/form-data">
         <div class="card-body">
-            <div class="form-group" style="margin-bottom: 24px;">
-                <label class="data-label" style="display: block; margin-bottom: 8px;">Excel Workbook (.xlsx, .xlsm)</label>
-                <input type="file" name="workbook" accept=".xlsx,.xlsm" required class="file-input">
+            <p class="text-sm text-muted mb-6">Your workbook must contain at minimum: <strong>Category</strong>, <strong>Forecast</strong>, and <strong>Actual</strong> columns.</p>
+
+            <div class="form-group mb-6">
+                <div class="upload-zone relative">
+                    <div class="upload-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    </div>
+                    <h3 class="text-base font-sans font-medium text-white mb-2">Select or drag your workbook here</h3>
+                    <p class="text-sm text-muted mb-4">Supports .xlsx and .xlsm files.</p>
+                    <div class="file-input-wrapper relative inline-block">
+                        <input type="file" name="workbook" id="workbook" accept=".xlsx,.xlsm" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="document.getElementById('file-name').textContent = this.files[0] ? this.files[0].name : 'Browse Files'">
+                        <span class="btn btn-secondary pointer-events-none relative z-0" id="file-name">Browse Files</span>
+                    </div>
+                </div>
             </div>
-            
+
             <div class="form-group">
                 <label class="data-label" style="display: block; margin-bottom: 8px;">Analyst Context / Reasoning (Optional)</label>
                 <textarea name="reasoning" rows="3" class="text-input" placeholder="Enter market conditions, known events, or context...">{{ reasoning|default('') }}</textarea>
@@ -34,7 +45,7 @@
 </div>
 {% else %}
 <!-- State 2: Mapping -->
-<div class="card fade-in">
+<div class="card fade-in max-w-5xl">
     {% if mapping_error %}
     <div class="banner banner-error mb-0" style="border-bottom: 0; border-radius: var(--radius-md) var(--radius-md) 0 0;">
         <span class="banner-label">Error:</span>
@@ -51,7 +62,7 @@
     <form action="/upload/analyze" method="post">
         <input type="hidden" name="upload_token" value="{{ upload_token|default('') }}">
         <input type="hidden" name="workbook_name" value="{{ workbook_name|default('') }}">
-        
+
         <div class="card-header" style="display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap;">
             <div>
                 <h2 class="card-title mb-0" style="margin-bottom: 6px;">Data Mapping</h2>
@@ -74,7 +85,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="card-body">
             <div class="mapping-grid">
                 <div class="form-group">
@@ -114,12 +125,12 @@
                     </select>
                 </div>
             </div>
-            
+
             <div class="form-group" style="margin-bottom: 24px;">
                 <label class="data-label" style="display: block; margin-bottom: 8px;">Analyst Context</label>
                 <textarea name="reasoning" rows="2" class="text-input" placeholder="Market context...">{{ reasoning|default('') }}</textarea>
             </div>
-            
+
             <label class="data-label" style="display: block; margin-bottom: 8px;">Data Preview</label>
             <div class="table-responsive" style="border: 1px solid var(--border-dark); border-radius: var(--radius-sm); max-height: 280px; overflow-y: auto;">
                 <table class="data-table">

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Variance Projects</h1>
+    <p class="subtitle mt-1">All historical and active variance tracking projects.</p>
+</div>
+
+<div class="card fade-in">
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Project</th>
+                    <th>Date / FY</th>
+                    <th class="numeric">Drivers</th>
+                    <th>Status</th>
+                    <th class="action-cell"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for project in projects %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('results', submission_id=project.id) }}" class="font-medium text-white hover:text-brass-bright" style="text-decoration: none;">
+                            {{ project.title }}
+                        </a>
+                    </td>
+                    <td class="font-mono text-muted">{{ project.date|india_date if project.date else '-' }} · {{ project.financial_year or 'Financial Year' }}</td>
+                    <td class="numeric font-mono">{{ project.driver_count|default(0) }}</td>
+                    <td>
+                        {% if project.needs_review %}
+                        <span class="badge badge-warning">Needs Review</span>
+                        {% else %}
+                        <span class="badge badge-success">Completed</span>
+                        {% endif %}
+                    </td>
+                    <td class="action-cell">
+                        <a href="{{ url_for('results', submission_id=project.id) }}" class="btn btn-sm btn-secondary">View</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5">
+                        <div class="empty-state">
+                            <p>No projects found.</p>
+                            <a href="{{ url_for('new_analysis') }}" class="btn btn-primary mt-4">Start New Analysis</a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

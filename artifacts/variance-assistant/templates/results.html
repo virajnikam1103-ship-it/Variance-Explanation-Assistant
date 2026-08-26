@@ -3,10 +3,15 @@
 {% block content %}
 <div class="page-header">
     <div class="header-actions">
-        <a href="/" class="btn btn-secondary btn-sm">Back to Input</a>
+        <a href="{{ url_for('projects') }}" class="btn btn-secondary btn-sm">All Projects</a>
     </div>
+    {% if report %}
+    <h1>{{ report.title | default('Variance Report') }}</h1>
+    <p class="subtitle font-mono mt-1">{{ report.date|india_date if report.date else submission.timestamp|india_date }} · {{ report.financial_year|default('Financial Year') }}</p>
+    {% else %}
     <h1>Analysis Results</h1>
-    <p class="subtitle font-mono mt-1">Report ID: {{ submission.id }} · {{ submission.timestamp }}</p>
+    <p class="subtitle font-mono mt-1">Report ID: {{ submission.id }} · {{ submission.timestamp|india_date }}</p>
+    {% endif %}
 </div>
 
 {% if analysis_context %}
@@ -16,8 +21,40 @@
 </div>
 {% endif %}
 
+{% if report and report.summary %}
+<div class="kpi-grid fade-in">
+    <div class="kpi-card">
+        <div class="kpi-label">Total Forecast</div>
+        <div class="kpi-value font-mono">{{ report.summary.total_forecast | inr }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Total Actual</div>
+        <div class="kpi-value font-mono">{{ report.summary.total_actual | inr }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Net Variance</div>
+        <div class="kpi-value font-mono {% if report.summary.net_variance > 0 %}above-plan{% elif report.summary.net_variance < 0 %}below-plan{% endif %}">
+            {{ report.summary.net_variance | inr_signed }}
+        </div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Material Drivers</div>
+        <div class="kpi-value font-sans">{{ report.summary.material_count }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Largest Driver</div>
+        <div class="kpi-value kpi-value-compact">{{ report.summary.largest_driver.category if report.summary.largest_driver else '—' }}</div>
+        {% if report.summary.largest_driver %}
+        <div class="kpi-context {{ 'above-plan' if report.summary.largest_driver.variance > 0 else 'below-plan' if report.summary.largest_driver.variance < 0 else '' }}">
+            {{ report.summary.largest_driver.variance|inr_signed }}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
 {% if drivers %}
-<div class="variance-overview fade-in card mb-4">
+<div class="variance-overview fade-in card mb-8">
     <div class="card-header">
         <h2 class="card-title mb-0">Variance Overview</h2>
     </div>
@@ -47,77 +84,143 @@
 </div>
 {% endif %}
 
-<div class="results-grid fade-in">
-    {# Positive means actual is above forecast; for an expense-style review that is unfavorable (red). #}
+<div class="results-grid fade-in mb-8">
     {% for driver in drivers %}
-    <div class="result-card card">
-        <div class="card-header">
-            <h2 class="card-title">{{ driver.driver_category }}</h2>
-            
-            <div class="metric-group">
+    <div class="result-card card flex flex-col">
+        <div class="card-header pb-4">
+            <div class="flex justify-between items-start mb-4">
+                <h2 class="card-title mb-0">{{ driver.driver_category }}</h2>
+                {% if driver.rank %}
+                <span class="badge shrink-0" style="border-color: var(--border-dark); color: var(--text-faint);">#{{ driver.rank }}</span>
+                {% endif %}
+            </div>
+
+            <div class="metric-group gap-4" style="flex-wrap: wrap; justify-content: space-between;">
+                <div class="metric">
+                    <span class="metric-label">Forecast</span>
+                    <span class="metric-value font-mono">{{ driver.forecast | inr if driver.forecast is defined else '-' }}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Actual</span>
+                    <span class="metric-value font-mono">{{ driver.actual | inr if driver.actual is defined else '-' }}</span>
+                </div>
                 <div class="metric">
                     <span class="metric-label">Variance</span>
-                    <span class="metric-value {% if driver.variance > 0 %}above-plan{% elif driver.variance < 0 %}below-plan{% endif %}">
-                        {{ "{:+,.2f}".format(driver.variance) }}
+                    <span class="metric-value font-mono {% if driver.variance > 0 %}above-plan{% elif driver.variance < 0 %}below-plan{% endif %}">
+                        {{ driver.variance | inr_signed }}
                     </span>
                 </div>
                 <div class="metric">
-                    <span class="metric-label">% Change</span>
+                    <span class="metric-label">% Var</span>
                     {% if driver.variance_pct is none %}
-                    <span class="metric-value">Undefined</span>
+                    <span class="metric-value font-mono">N/A</span>
                     {% else %}
-                    <span class="metric-value {% if driver.variance_pct > 0 %}above-plan{% elif driver.variance_pct < 0 %}below-plan{% endif %}">
+                    <span class="metric-value font-mono {% if driver.variance_pct > 0 %}above-plan{% elif driver.variance_pct < 0 %}below-plan{% endif %}">
                         {{ "{:+,.1f}%".format(driver.variance_pct) }}
                     </span>
                     {% endif %}
                 </div>
             </div>
         </div>
-        
-        <div class="card-body">
-            <div class="data-row">
-                <span class="data-label">Classification</span>
+
+        <div class="card-body pt-4 flex-1">
+            <div class="data-row flex-row gap-2 items-center mb-4">
                 <span class="badge badge-classification badge-{{ driver.classification }}">{{ driver.classification }}</span>
+                {% if driver.plan_direction %}
+                <span class="text-xs text-muted font-mono uppercase tracking-wider">{{ driver.plan_direction }}</span>
+                {% endif %}
             </div>
-            
-            {% if driver.low_confidence %}
-            <div class="warning-box">
+
+            {% if driver.confidence_label == 'Insufficient Evidence' or (driver.confidence and driver.confidence < 60) %}
+            <div class="warning-box mb-4">
+                <span class="warning-label">Insufficient Evidence</span>
+                <p class="warning-text">The provided context or ledger data does not adequately explain this variance. Analyst review required.</p>
+            </div>
+            {% elif driver.low_confidence %}
+            <div class="warning-box mb-4">
                 <span class="warning-label">Low confidence — verify manually</span>
                 <p class="warning-text">This explanation is less than 60% confident and should be checked before sharing.</p>
             </div>
             {% endif %}
 
             {% if driver.tag_mismatch %}
-            <div class="warning-box">
-                <span class="warning-label">AI classification differs from rule-based tag</span>
+            <div class="warning-box mb-4">
+                <span class="warning-label">Classification Mismatch</span>
                 <p class="warning-text">Rule-based: <strong>{{ driver.rule_based_tag }}</strong> · AI: <strong>{{ driver.classification }}</strong></p>
             </div>
             {% endif %}
 
-            <div class="explanation-block">
+            <div class="explanation-block mb-4">
                 <span class="data-label">Explanation</span>
                 <p class="explanation-text">{{ driver.explanation }}</p>
             </div>
-        </div>
-        
-        <div class="card-footer">
-            <div class="confidence-indicator">
-                <span class="data-label">AI Confidence</span>
-                <div class="confidence-bar">
-                    <div class="confidence-fill {% if driver.low_confidence %}fill-low{% else %}fill-high{% endif %}" style="width: {{ driver.confidence }}%"></div>
-                </div>
-                <span class="confidence-score">{{ driver.confidence|int }}%</span>
+
+            {% if driver.evidence_note %}
+            <div class="explanation-block mt-4">
+                <span class="data-label">Evidence Note</span>
+                <p class="explanation-text text-muted italic">{{ driver.evidence_note }}</p>
             </div>
-            {% if driver.low_confidence %}
-            <span class="badge badge-warning">Review Required</span>
+            {% endif %}
+        </div>
+
+        <div class="card-footer mt-auto">
+            <div class="confidence-indicator flex-1">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="data-label mb-0">{{ driver.confidence_label | default('AI Confidence') }}</span>
+                    <span class="confidence-score text-xs">{{ driver.confidence|int }}%</span>
+                </div>
+                <div class="confidence-bar w-full" style="height: 4px; background: var(--border-strong); border-radius: 2px; overflow: hidden;">
+                    <div class="confidence-fill {% if driver.low_confidence or (driver.confidence and driver.confidence < 60) %}fill-low bg-unfavorable{% else %}fill-high bg-favorable{% endif %}" style="width: {{ driver.confidence }}%; height: 100%; transition: width 0.3s ease;"></div>
+                </div>
+            </div>
+            {% if driver.low_confidence or (driver.confidence and driver.confidence < 60) %}
+            <span class="badge badge-warning ml-4">Review Required</span>
             {% endif %}
         </div>
     </div>
     {% else %}
-    <div class="empty-state">
-        <p>No results found for this report.</p>
-        <a href="/" class="btn btn-primary">Create Analysis</a>
+    <div class="empty-state w-full col-span-full">
+        <p>No material drivers identified for this report.</p>
+        <a href="/" class="btn btn-primary mt-4">Create Analysis</a>
     </div>
     {% endfor %}
 </div>
+
+{% if report and report.line_items %}
+<div class="card fade-in mb-8">
+    <div class="card-header">
+        <h2 class="card-title mb-0">Line Items Ledger</h2>
+    </div>
+    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+        <table class="data-table">
+            <thead style="position: sticky; top: 0; z-index: 10; background: var(--surface-inset); box-shadow: 0 1px 0 var(--border-dark);">
+                <tr>
+                    <th>Category</th>
+                    <th class="numeric">Forecast</th>
+                    <th class="numeric">Actual</th>
+                    <th class="numeric">Variance</th>
+                    <th class="numeric">% Var</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in report.line_items %}
+                <tr>
+                    <td class="font-medium text-white">{{ item.category }}</td>
+                    <td class="numeric font-mono text-muted">{{ item.forecast | inr }}</td>
+                    <td class="numeric font-mono text-white">{{ item.actual | inr }}</td>
+                    <td class="numeric font-mono {% if item.variance > 0 %}above-plan{% elif item.variance < 0 %}below-plan{% endif %}">
+                        {{ item.variance | inr_signed }}
+                    </td>
+                    <td class="numeric font-mono {% if item.variance_pct > 0 %}above-plan{% elif item.variance_pct < 0 %}below-plan{% endif %}">
+                        {{ "{:+.1f}%".format(item.variance_pct) if item.variance_pct is not none else 'N/A' }}
+                    </td>
+                    <td class="text-xs text-muted max-w-[200px] truncate" title="{{ item.notes }}">{{ item.notes or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

@@ -19,6 +19,12 @@ from database import (
 )
 from excel_parser import extract_variance_rows, get_sheet_preview, get_workbook_metadata
 from logic import compute_key_drivers
+from presentation import (
+    build_report_presentation,
+    format_indian_date,
+    format_inr,
+    project_summary,
+)
 
 
 app = Flask(__name__)
@@ -75,6 +81,31 @@ def _upload_template_context(
 def _render_upload(**context: Any):
     """Render the upload screen with explicit, safe template defaults."""
     return render_template("upload.html", **_upload_template_context(**context))
+
+
+@app.template_filter("inr")
+def inr_filter(value: Any) -> str:
+    """Expose INR formatting to templates using Indian digit grouping."""
+    return format_inr(value)
+
+
+@app.template_filter("inr_signed")
+def signed_inr_filter(value: Any) -> str:
+    """Expose signed INR formatting to templates."""
+    return format_inr(value, signed=True)
+
+
+@app.template_filter("india_date")
+def india_date_filter(value: str) -> str:
+    """Expose DD/MM/YYYY formatting to templates."""
+    return format_indian_date(value)
+
+
+@app.context_processor
+def sidebar_projects() -> dict[str, Any]:
+    """Provide real recent saved reports to the shared sidebar."""
+    submissions = get_all_submissions()[:6]
+    return {"sidebar_projects": [project_summary(item) for item in submissions]}
 
 
 def _submitted_rows() -> list[dict[str, str]]:
@@ -159,17 +190,25 @@ def _validate_rows(rows: list[dict[str, str]]) -> tuple[list[dict[str, Any]], li
 
 @app.get("/")
 def index():
-    """Render the structured variance input form."""
-    return render_template("index.html", rows=[{}, {}, {}], errors=[])
+    """Render the product landing page and its two workflow choices."""
+    return render_template("index.html")
+
+
+@app.get("/analysis/new")
+def new_analysis():
+    """Render the existing structured manual-entry workflow."""
+    return render_template("analysis_form.html", rows=[{}, {}, {}], errors=[])
 
 
 @app.get("/upload")
+@app.get("/analysis/upload")
 def upload():
     """Render the consolidated workbook upload screen."""
     return _render_upload()
 
 
 @app.post("/upload")
+@app.post("/analysis/upload")
 def upload_workbook():
     """Save a workbook temporarily and render its sheet and column mapper."""
     workbook_file = request.files.get("workbook")
@@ -357,7 +396,7 @@ def analyze():
     valid_rows, errors = _validate_rows(submitted_rows)
     if errors:
         return render_template(
-            "index.html",
+            "analysis_form.html",
             rows=submitted_rows or [{}, {}, {}],
             errors=errors,
         ), 400
@@ -371,6 +410,7 @@ def analyze():
 
 
 @app.get("/results/<int:submission_id>")
+@app.get("/reports/<int:submission_id>")
 def results(submission_id: int):
     """Render one saved report as readable driver cards."""
     submission = get_submission_by_id(submission_id)
@@ -390,25 +430,41 @@ def results(submission_id: int):
         default=1,
     )
     merged_drivers = []
-    for computed, ai_result in zip(
+    for rank, (computed, ai_result) in enumerate(zip(
         submission["computed_drivers"], submission["ai_output"]
-    ):
+    ), start=1):
         merged_driver = {**computed, **ai_result}
         merged_driver["bar_width"] = (
             min(100, abs(computed["variance_pct"]) / max_percentage * 100)
             if computed.get("variance_pct") is not None
             else 0
         )
+        merged_driver["rank"] = rank
+        merged_driver["evidence_note"] = computed.get("notes") or (
+            "No supporting note was supplied for this line item."
+        )
+        confidence = float(merged_driver.get("confidence", 0))
+        merged_driver["confidence_label"] = (
+            "High Evidence" if confidence >= 80 else "Medium Evidence"
+            if confidence >= 60 else "Insufficient Evidence"
+        )
+        merged_driver["plan_direction"] = (
+            "Above plan" if computed["variance"] > 0 else "Below plan"
+            if computed["variance"] < 0 else "On plan"
+        )
         merged_drivers.append(merged_driver)
+    presentation = build_report_presentation(submission)
     return render_template(
         "results.html",
         submission=submission,
         drivers=merged_drivers,
         analysis_context=submission.get("analysis_context", ""),
+        report=presentation,
     )
 
 
 @app.get("/admin")
+@app.get("/history")
 def admin():
     """Render report history and the low-confidence aggregate."""
     submissions = get_all_submissions()
@@ -422,6 +478,16 @@ def admin():
         "admin.html",
         submissions=submissions,
         low_confidence_percentage=low_confidence_percentage,
+    )
+
+
+@app.get("/projects")
+def projects():
+    """Render the database-backed variance project list."""
+    submissions = get_all_submissions()
+    return render_template(
+        "projects.html",
+        projects=[project_summary(item) for item in submissions],
     )
 
 

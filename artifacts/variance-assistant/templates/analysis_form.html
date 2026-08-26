@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <div class="eyebrow"><span class="eyebrow-rule"></span>Manual Ledger</div>
+    <h1>New Variance Analysis</h1>
+    <p class="subtitle mt-1">Enter forecast and actual data for a concise, evidence-led explanation of movement.</p>
+</div>
+
+{% if errors %}
+<div class="banner banner-error fade-in">
+    <div>
+        <span class="banner-label">Please correct the following:</span>
+        <ul class="banner-list">
+            {% for error in errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}
+
+<form action="{{ url_for('analyze') }}" method="POST" id="variance-form" class="card fade-in max-w-5xl">
+    <div class="table-responsive">
+        <table class="data-table input-table" id="input-grid">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th class="numeric">Forecast</th>
+                    <th class="numeric">Actual</th>
+                    <th>Notes (Optional)</th>
+                    <th class="action-cell"></th>
+                </tr>
+            </thead>
+            <tbody id="grid-body">
+                {% for row in rows %}
+                <tr class="input-row">
+                    <td>
+                        <input type="text" name="category" placeholder="e.g. Q3 Revenue" value="{{ row.get('category', '') }}" required aria-label="Category">
+                    </td>
+                    <td>
+                        <input type="number" min="0" step="any" name="forecast" placeholder="0.00" value="{{ row.get('forecast', '') }}" required aria-label="Forecast" class="numeric-input">
+                    </td>
+                    <td>
+                        <input type="number" step="any" name="actual" placeholder="0.00" value="{{ row.get('actual', '') }}" required aria-label="Actual" class="numeric-input">
+                    </td>
+                    <td>
+                        <input type="text" name="notes" placeholder="Context..." value="{{ row.get('notes', '') }}" aria-label="Notes">
+                    </td>
+                    <td class="action-cell">
+                        <button type="button" class="btn-icon btn-remove" aria-label="Remove row" title="Remove row">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="form-actions">
+        <button type="button" class="btn btn-secondary" id="btn-add-row">Add Row</button>
+        <button type="submit" class="btn btn-primary" id="btn-analyze">
+            <span class="btn-text">Analyze Variances</span>
+            <span class="loader hidden" aria-hidden="true"></span>
+        </button>
+    </div>
+</form>
+{% endblock %}
