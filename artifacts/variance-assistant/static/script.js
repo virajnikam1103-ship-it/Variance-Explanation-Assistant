@@ -1,8 +1,48 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const appLayout = document.getElementById('app-layout');
+    const sidebarToggle = document.getElementById('sidebar-toggle');
     const inputGrid = document.getElementById('grid-body');
     const btnAddRow = document.getElementById('btn-add-row');
     const varianceForm = document.getElementById('variance-form');
     const btnAnalyze = document.getElementById('btn-analyze');
+
+    if (appLayout && sidebarToggle) {
+        const sidebarStateKey = 'variance-assistant-sidebar-state';
+        let isCollapsed = false;
+        try {
+            isCollapsed = window.localStorage.getItem(sidebarStateKey) === 'collapsed';
+        } catch (error) {
+            // A blocked storage context should not prevent sidebar interaction.
+        }
+
+        const updateSidebar = (collapsed, persist = true) => {
+            appLayout.classList.toggle('sidebar-collapsed', collapsed);
+            sidebarToggle.setAttribute('aria-expanded', String(!collapsed));
+            sidebarToggle.setAttribute(
+                'aria-label',
+                collapsed ? 'Expand sidebar' : 'Collapse sidebar'
+            );
+            sidebarToggle.setAttribute(
+                'title',
+                collapsed ? 'Expand sidebar' : 'Collapse sidebar'
+            );
+            if (persist) {
+                try {
+                    window.localStorage.setItem(
+                        sidebarStateKey,
+                        collapsed ? 'collapsed' : 'expanded'
+                    );
+                } catch (error) {
+                    // The control remains fully usable without persistence.
+                }
+            }
+        };
+
+        updateSidebar(isCollapsed, false);
+        sidebarToggle.addEventListener('click', () => {
+            updateSidebar(!appLayout.classList.contains('sidebar-collapsed'));
+        });
+    }
 
     if (btnAddRow && inputGrid) {
         btnAddRow.addEventListener('click', () => {

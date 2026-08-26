@@ -10,8 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@600&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="app-layout">
-        <aside class="app-sidebar flex flex-col">
+    <div class="app-layout" id="app-layout">
+        <aside class="app-sidebar flex flex-col" id="app-sidebar">
             <div class="sidebar-header">
                 <div class="logo">
                     <a href="/" aria-label="Variance Assistant home">
@@ -64,6 +64,11 @@
         </aside>
 
         <main class="app-main">
+            <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-controls="app-sidebar" aria-expanded="true" aria-label="Collapse sidebar" title="Collapse sidebar">
+                <span class="sidebar-toggle-icon" aria-hidden="true">
+                    <span></span><span></span><span></span>
+                </span>
+            </button>
             <div class="container main-content">
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% for category, message in messages %}
