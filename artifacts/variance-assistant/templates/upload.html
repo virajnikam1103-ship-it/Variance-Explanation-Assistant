@@ -3,10 +3,40 @@
 {% block content %}
 <div class="page-header">
     <h1>Import Financial Data</h1>
-    <p class="subtitle mt-1">Bring an Excel workbook, a text-based PDF, or a public Google Sheet into one analysis flow.</p>
+    <p class="subtitle mt-1">Bring an Excel workbook, a text-based PDF, or a Google Sheet into one analysis flow.</p>
 </div>
 
-{% if not is_mapping %}
+{% if is_private_sheet_selection %}
+<div class="card fade-in max-w-5xl">
+    <form action="/upload/private-google-sheet/worksheet" method="post">
+        <input type="hidden" name="private_sheet_url" value="{{ private_sheet_url }}">
+        <div class="card-header">
+            <div class="source-type-label">Connected Account</div>
+            <h2 class="card-title mb-0">Choose a Private Worksheet</h2>
+            <p class="text-sm text-muted" style="margin: 8px 0 0;">{{ private_workbook_title }}</p>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label class="data-label" for="worksheet_title" style="display: block; margin-bottom: 8px;">Worksheet</label>
+                <select name="worksheet_title" id="worksheet_title" class="select-input" required>
+                    {% for sheet in private_sheets %}
+                    <option value="{{ sheet.title }}">{{ sheet.title }}</option>
+                    {% endfor %}
+                </select>
+                <p class="source-help">The selected worksheet will be copied temporarily into the existing mapping flow and removed after a successful analysis.</p>
+            </div>
+            <div class="form-group" style="margin-top: 24px;">
+                <label class="data-label" style="display: block; margin-bottom: 8px;">Analyst Context / Reasoning (Optional)</label>
+                <textarea name="reasoning" rows="3" class="text-input" placeholder="Enter market conditions, known events, or context...">{{ private_reasoning|default('') }}</textarea>
+            </div>
+        </div>
+        <div class="card-footer" style="justify-content: space-between;">
+            <a href="/upload" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">Continue to Mapping</button>
+        </div>
+    </form>
+</div>
+{% elif not is_mapping %}
 <!-- State 1: Upload -->
 <div class="source-import-grid max-w-5xl">
     {% if upload_error %}
@@ -52,7 +82,7 @@
             <div class="form-group mb-6">
                 <label class="data-label" for="google_sheet_url" style="display: block; margin-bottom: 8px;">Google Sheets Link</label>
                 <input type="url" name="google_sheet_url" id="google_sheet_url" class="text-input" required placeholder="https://docs.google.com/spreadsheets/d/...">
-                <p class="source-help">The sheet must be shared as “Anyone with the link” or published to the web. Private-sheet connection support can be added separately.</p>
+                <p class="source-help">The sheet must be shared as “Anyone with the link” or published to the web.</p>
             </div>
             <div class="form-group">
                 <label class="data-label" style="display: block; margin-bottom: 8px;">Analyst Context / Reasoning (Optional)</label>
@@ -61,6 +91,25 @@
         </div>
         <div class="card-footer" style="justify-content: flex-end;">
             <button type="submit" class="btn btn-primary">Import Google Sheet</button>
+        </div>
+    </form>
+    <form action="/upload/private-google-sheet" method="post" class="card source-import-card">
+        <div class="card-body">
+            <div class="source-type-label">Connected Account</div>
+            <h2 class="card-title">Private Google Sheet</h2>
+            <p class="text-sm text-muted mb-6">Use a sheet the connected Google account can access without changing its sharing settings.</p>
+            <div class="form-group mb-6">
+                <label class="data-label" for="private_google_sheet_url" style="display: block; margin-bottom: 8px;">Private Google Sheets Link</label>
+                <input type="url" name="private_google_sheet_url" id="private_google_sheet_url" class="text-input" required placeholder="https://docs.google.com/spreadsheets/d/...">
+                <p class="source-help">Google access is managed securely by Replit. Paste only the sheet link—never a password, API key, or Google credential.</p>
+            </div>
+            <div class="form-group">
+                <label class="data-label" style="display: block; margin-bottom: 8px;">Analyst Context / Reasoning (Optional)</label>
+                <textarea name="reasoning" rows="3" class="text-input" placeholder="Enter market conditions, known events, or context...">{{ reasoning|default('') }}</textarea>
+            </div>
+        </div>
+        <div class="card-footer" style="justify-content: flex-end;">
+            <button type="submit" class="btn btn-primary">Choose Worksheet</button>
         </div>
     </form>
 </div>
@@ -181,7 +230,7 @@
             </div>
         </div>
         <div class="card-footer" style="justify-content: space-between;">
-            <a href="/upload" class="btn btn-secondary">Cancel</a>
+            <button type="submit" formaction="/upload/cancel" formmethod="post" class="btn btn-secondary">Cancel</button>
             <button type="submit" class="btn btn-primary">Run Analysis</button>
         </div>
     </form>

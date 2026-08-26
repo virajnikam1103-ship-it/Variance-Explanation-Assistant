@@ -2,7 +2,9 @@
 
 import math
 import os
+import threading
 import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -18,7 +20,11 @@ from database import (
     save_submission,
 )
 from excel_parser import extract_variance_rows, get_sheet_preview, get_workbook_metadata
-from google_sheets import download_google_sheet
+from google_sheets import (
+    download_google_sheet,
+    download_private_google_sheet,
+    get_private_sheet_metadata,
+)
 from logic import compute_key_drivers
 from pdf_parser import extract_pdf_variance_rows, get_pdf_metadata, get_pdf_preview
 from presentation import (
@@ -37,6 +43,8 @@ app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
 
 UPLOAD_DIRECTORY = Path(__file__).with_name("uploads")
 ALLOWED_UPLOAD_EXTENSIONS = {".xlsx", ".xlsm", ".pdf"}
+UPLOAD_EXPIRY = timedelta(minutes=30)
+UPLOAD_CLEANUP_INTERVAL_SECONDS = 5 * 60
 
 
 def _upload_path(upload_token: str) -> Path | None:
@@ -44,6 +52,13 @@ def _upload_path(upload_token: str) -> Path | None:
     if not upload_token or Path(upload_token).name != upload_token:
         return None
     candidate = UPLOAD_DIRECTORY / upload_token
+    if (
+        candidate.is_file()
+        and datetime.fromtimestamp(candidate.stat().st_mtime, tz=timezone.utc)
+        < datetime.now(timezone.utc) - UPLOAD_EXPIRY
+    ):
+        candidate.unlink(missing_ok=True)
+        return None
     return candidate if candidate.is_file() else None
 
 
@@ -52,6 +67,35 @@ def _delete_upload(upload_token: str) -> None:
     path = _upload_path(upload_token)
     if path:
         path.unlink(missing_ok=True)
+
+
+def _cleanup_expired_uploads() -> None:
+    """Clear abandoned temporary source files before starting a new import."""
+    if not UPLOAD_DIRECTORY.is_dir():
+        return
+    expired_before = datetime.now(timezone.utc) - UPLOAD_EXPIRY
+    for candidate in UPLOAD_DIRECTORY.iterdir():
+        if candidate.is_file() and datetime.fromtimestamp(
+            candidate.stat().st_mtime, tz=timezone.utc
+        ) < expired_before:
+            candidate.unlink(missing_ok=True)
+
+
+def _start_upload_cleanup_worker() -> None:
+    """Periodically remove abandoned temporary imports without user activity."""
+    def cleanup_loop() -> None:
+        while True:
+            threading.Event().wait(UPLOAD_CLEANUP_INTERVAL_SECONDS)
+            try:
+                _cleanup_expired_uploads()
+            except OSError as error:
+                print(f"Temporary upload cleanup failed: {error}")
+
+    threading.Thread(
+        target=cleanup_loop,
+        name="temporary-upload-cleanup",
+        daemon=True,
+    ).start()
 
 
 def _upload_template_context(
@@ -80,6 +124,11 @@ def _upload_template_context(
         "selected_forecast": values.get("selected_forecast", ""),
         "selected_actual": values.get("selected_actual", ""),
         "selected_notes": values.get("selected_notes", ""),
+        "is_private_sheet_selection": values.get("is_private_sheet_selection", False),
+        "private_sheet_url": values.get("private_sheet_url", ""),
+        "private_workbook_title": values.get("private_workbook_title", ""),
+        "private_sheets": values.get("private_sheets", []),
+        "private_reasoning": values.get("private_reasoning", ""),
     }
 
 
@@ -88,10 +137,17 @@ def _render_upload(**context: Any):
     return render_template("upload.html", **_upload_template_context(**context))
 
 
+@app.before_request
+def clean_expired_uploads_before_import() -> None:
+    """Sweep stale imports whenever an upload-flow request reaches the app."""
+    if request.path.startswith("/upload"):
+        _cleanup_expired_uploads()
+
+
 def _source_metadata(path: Path, source_kind: str) -> dict[str, Any]:
     if source_kind == "pdf":
         return get_pdf_metadata(path)
-    if source_kind == "google_sheet":
+    if source_kind in {"google_sheet", "private_google_sheet"}:
         return get_csv_metadata(path)
     return get_workbook_metadata(path)
 
@@ -101,7 +157,7 @@ def _source_preview(
 ) -> tuple[list[dict[str, Any]], list[list[str]]]:
     if source_kind == "pdf":
         return get_pdf_preview(path, selected_sheet)
-    if source_kind == "google_sheet":
+    if source_kind in {"google_sheet", "private_google_sheet"}:
         return get_csv_preview(path, selected_sheet)
     return get_sheet_preview(path, selected_sheet)
 
@@ -124,7 +180,7 @@ def _source_rows(
             actual_index,
             notes_index,
         )
-    if source_kind == "google_sheet":
+    if source_kind in {"google_sheet", "private_google_sheet"}:
         return extract_csv_variance_rows(
             path,
             selected_sheet,
@@ -278,6 +334,7 @@ def new_analysis():
 @app.get("/analysis/upload")
 def upload():
     """Render the consolidated source import screen."""
+    _cleanup_expired_uploads()
     return _render_upload()
 
 
@@ -285,6 +342,7 @@ def upload():
 @app.post("/analysis/upload")
 def upload_workbook():
     """Save an Excel/PDF source temporarily and render its mapper."""
+    _cleanup_expired_uploads()
     workbook_file = request.files.get("workbook")
     reasoning = request.form.get("reasoning", "").strip()
     if workbook_file is None or not workbook_file.filename:
@@ -332,6 +390,7 @@ def upload_workbook():
 @app.post("/upload/google-sheet")
 def upload_google_sheet():
     """Download a public Google Sheet as CSV and render the shared mapper."""
+    _cleanup_expired_uploads()
     sheet_url = request.form.get("google_sheet_url", "").strip()
     reasoning = request.form.get("reasoning", "").strip()
     if not sheet_url:
@@ -364,6 +423,78 @@ def upload_google_sheet():
         preview_rows=metadata["preview_rows"],
         reasoning=reasoning,
     )
+
+
+@app.post("/upload/private-google-sheet")
+def choose_private_google_sheet():
+    """Load accessible private worksheet choices through the managed OAuth proxy."""
+    _cleanup_expired_uploads()
+    sheet_url = request.form.get("private_google_sheet_url", "").strip()
+    reasoning = request.form.get("reasoning", "").strip()
+    if not sheet_url:
+        return _render_upload(
+            upload_error="Paste a Google Sheets link to continue."
+        ), 400
+
+    try:
+        metadata = get_private_sheet_metadata(sheet_url)
+    except ValueError as error:
+        print(f"Private Google Sheet metadata failed: {error}")
+        return _render_upload(upload_error=str(error)), 400
+
+    return _render_upload(
+        is_private_sheet_selection=True,
+        private_sheet_url=sheet_url,
+        private_workbook_title=metadata["title"],
+        private_sheets=metadata["sheets"],
+        private_reasoning=reasoning,
+    )
+
+
+@app.post("/upload/private-google-sheet/worksheet")
+def upload_private_google_sheet():
+    """Export the selected private worksheet temporarily for the common mapper."""
+    _cleanup_expired_uploads()
+    sheet_url = request.form.get("private_sheet_url", "").strip()
+    worksheet_title = request.form.get("worksheet_title", "").strip()
+    reasoning = request.form.get("reasoning", "").strip()
+    if not sheet_url or not worksheet_title:
+        return _render_upload(
+            upload_error="Choose a private Google Sheet and worksheet to continue."
+        ), 400
+
+    UPLOAD_DIRECTORY.mkdir(exist_ok=True)
+    upload_token = f"{uuid.uuid4().hex}.csv"
+    upload_path = UPLOAD_DIRECTORY / upload_token
+    try:
+        workbook_name = download_private_google_sheet(
+            sheet_url, worksheet_title, upload_path
+        )
+        metadata = get_csv_metadata(upload_path)
+    except ValueError as error:
+        upload_path.unlink(missing_ok=True)
+        print(f"Private Google Sheet import failed: {error}")
+        return _render_upload(upload_error=str(error)), 400
+
+    return _render_upload(
+        is_mapping=True,
+        upload_token=upload_token,
+        workbook_name=f"{workbook_name} — {worksheet_title}",
+        source_kind="private_google_sheet",
+        source_label="Private Google Sheet",
+        sheets=metadata["sheets"],
+        selected_sheet=metadata["sheets"][0],
+        columns=metadata["columns"],
+        preview_rows=metadata["preview_rows"],
+        reasoning=reasoning,
+    )
+
+
+@app.post("/upload/cancel")
+def cancel_upload():
+    """Remove the temporary import source when an analyst exits the mapper."""
+    _delete_upload(request.form.get("upload_token", ""))
+    return redirect(url_for("upload"))
 
 
 @app.post("/upload/sheet")
@@ -660,6 +791,7 @@ def handle_unexpected_error(error: Exception):
 
 
 init_db()
+_start_upload_cleanup_worker()
 
 if __name__ == "__main__":
     app.run(
