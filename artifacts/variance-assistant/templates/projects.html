@@ -26,7 +26,7 @@
                             {{ project.title }}
                         </a>
                     </td>
-                    <td class="font-mono text-muted">{{ project.date|india_date if project.date else '-' }} · {{ project.financial_year or 'Financial Year' }}</td>
+                    <td class="font-mono text-muted">{{ project.date|india_date if project.date else '-' }} · {{ project.period or project.financial_year or 'Financial Year' }}</td>
                     <td class="numeric font-mono">{{ project.driver_count|default(0) }}</td>
                     <td>
                         {% if project.needs_review %}

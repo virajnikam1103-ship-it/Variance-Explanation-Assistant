@@ -7,7 +7,7 @@
     </div>
     {% if report %}
     <h1>{{ report.title | default('Variance Report') }}</h1>
-    <p class="subtitle font-mono mt-1">{{ report.date|india_date if report.date else submission.timestamp|india_date }} · {{ report.financial_year|default('Financial Year') }}</p>
+    <p class="subtitle font-mono mt-1">{{ report.date|india_date if report.date else submission.timestamp|india_date }} · {{ report.period|default(report.financial_year|default('Financial Year')) }}</p>
     {% else %}
     <h1>Analysis Results</h1>
     <p class="subtitle font-mono mt-1">Report ID: {{ submission.id }} · {{ submission.timestamp|india_date }}</p>

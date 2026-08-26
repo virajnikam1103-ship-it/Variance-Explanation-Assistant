@@ -62,6 +62,16 @@ def financial_year(value: str) -> str:
     return f"FY {start_year}–{str(start_year + 1)[-2:]}"
 
 
+def reporting_period(value: str) -> str:
+    """Return a quarter label using the Indian April-to-March financial year."""
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (AttributeError, ValueError):
+        return "Reporting Period"
+    quarter = ((parsed.month - 4) % 12) // 3 + 1
+    return f"Q{quarter} {financial_year(value)}"
+
+
 def report_title(submission: dict[str, Any]) -> str:
     """Create a meaningful saved-report title from the actual leading driver."""
     drivers = submission.get("computed_drivers", [])
@@ -77,6 +87,7 @@ def project_summary(submission: dict[str, Any]) -> dict[str, Any]:
         "title": report_title(submission),
         "date": format_indian_date(submission["timestamp"]),
         "financial_year": financial_year(submission["timestamp"]),
+        "period": reporting_period(submission["timestamp"]),
         "driver_count": len(submission.get("computed_drivers", [])),
         "needs_review": bool(submission.get("low_confidence_flag")),
     }
@@ -116,6 +127,7 @@ def build_report_presentation(submission: dict[str, Any]) -> dict[str, Any]:
         "title": report_title(submission),
         "date": format_indian_date(submission["timestamp"]),
         "financial_year": financial_year(submission["timestamp"]),
+        "period": reporting_period(submission["timestamp"]),
         "summary": {
             "total_forecast": total_forecast,
             "total_actual": total_actual,
