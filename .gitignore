@@ -32,6 +32,7 @@ node_modules
 /connect.lock
 /coverage
 /artifacts/variance-assistant/variance.db
+/artifacts/variance-assistant/uploads/
 __pycache__/
 *.py[cod]
 /libpeerconnection.log

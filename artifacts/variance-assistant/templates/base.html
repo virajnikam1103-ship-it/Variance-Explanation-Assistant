@@ -19,8 +19,9 @@
                 </a>
             </div>
             <nav class="main-nav">
-                <a href="/" class="nav-link nav-link-active">New Analysis</a>
-                <a href="/admin" class="nav-link">History</a>
+                <a href="/" class="nav-link {% if request and request.path == '/' %}nav-link-active{% elif not request %}nav-link-active{% endif %}">New Analysis</a>
+                <a href="/upload" class="nav-link {% if request and request.path and request.path.startswith('/upload') %}nav-link-active{% endif %}">Upload Workbook</a>
+                <a href="/admin" class="nav-link {% if request and request.path and request.path.startswith('/admin') %}nav-link-active{% endif %}">History</a>
             </nav>
         </div>
     </header>

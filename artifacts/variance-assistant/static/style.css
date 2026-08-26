@@ -150,6 +150,125 @@ input.numeric-input { text-align: right; font-family: var(--font-mono); font-var
 .fade-in { animation: fadeIn .35s ease-out both; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
+/* Form Input Enhancements */
+.text-input, .select-input {
+    width: 100%; padding: 9px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    color: var(--text); background: #121b28; font: 13px var(--font-sans); transition: border-color .14s ease, background-color .14s ease;
+}
+.text-input:hover, .select-input:hover { border-color: #59677b; }
+.text-input:focus, .select-input:focus { border-color: var(--brass); background: #151f2d; outline: none; }
+.text-input::placeholder { color: var(--text-faint); opacity: 1; }
+
+textarea.text-input { resize: vertical; min-height: 80px; font-family: var(--font-sans); }
+select.select-input { appearance: none; background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca6b5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 32px; }
+
+.file-input {
+    display: block; width: 100%; padding: 8px 10px;
+    color: var(--text); background: #121b28;
+    border: 1px dashed var(--border-strong); border-radius: var(--radius-sm);
+    font: 13px var(--font-mono); transition: border-color .14s ease;
+}
+.file-input:hover { border-color: #59677b; }
+.file-input:focus { border-color: var(--brass); outline: none; }
+.file-input::file-selector-button {
+    background: var(--surface-inset);
+    border: 1px solid var(--border-strong);
+    color: var(--text);
+    padding: 6px 12px;
+    margin-right: 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font: 500 12px var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    transition: all .14s ease;
+}
+.file-input::file-selector-button:hover {
+    border-color: var(--brass);
+    color: var(--brass-bright);
+}
+
+.mapping-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+/* Overview Panel */
+.context-panel {
+    background: var(--surface-dark);
+    border: 1px solid var(--border-dark);
+    border-left: 3px solid var(--slate);
+    border-radius: var(--radius-sm);
+    padding: 18px 20px;
+    margin-bottom: 28px;
+}
+.context-label {
+    color: var(--text-faint);
+    font: 500 10px var(--font-mono);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+.context-body {
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.variance-overview { margin-bottom: 28px; }
+.variance-overview .card-header { border-bottom: 1px solid var(--border-dark); }
+.overview-list { display: flex; flex-direction: column; }
+.overview-row {
+    display: flex;
+    align-items: center;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border-dark);
+    gap: 20px;
+    transition: background-color .14s ease;
+}
+.overview-row:hover { background: rgba(61, 71, 89, .18); }
+.overview-row:last-child { border-bottom: none; }
+.overview-category {
+    width: 30%;
+    min-width: 200px;
+    color: var(--text);
+    font: 500 13px var(--font-sans);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.overview-bar-cell {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+.overview-bar-container {
+    width: 100%;
+    height: 6px;
+    background: var(--surface-inset);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.overview-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width .5s ease-out;
+}
+.bar-favorable { background: var(--favorable); }
+.bar-unfavorable { background: var(--unfavorable); }
+.bar-neutral { background: var(--slate); }
+.overview-value {
+    width: 80px;
+    text-align: right;
+    font-size: 14px;
+    font-weight: 600;
+}
+.mb-0 { margin-bottom: 0 !important; }
+.mb-4 { margin-bottom: 24px !important; }
+.p-0 { padding: 0 !important; }
+
 @media (max-width: 768px) {
     .container { padding: 0 18px; }
     .app-main { padding-top: 36px; }

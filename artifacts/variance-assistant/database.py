@@ -29,18 +29,32 @@ def init_db() -> None:
                 computed_drivers TEXT NOT NULL,
                 ai_output TEXT NOT NULL,
                 avg_confidence REAL NOT NULL,
-                low_confidence_flag INTEGER NOT NULL
+                low_confidence_flag INTEGER NOT NULL,
+                analysis_context TEXT NOT NULL DEFAULT ''
             )
             """
         )
+        columns = {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(submissions)").fetchall()
+        }
+        if "analysis_context" not in columns:
+            connection.execute(
+                "ALTER TABLE submissions ADD COLUMN analysis_context TEXT NOT NULL DEFAULT ''"
+            )
 
 
 def save_submission(
     raw_input: list[dict[str, Any]],
     computed_drivers: list[dict[str, Any]],
     ai_output: list[dict[str, Any]],
+    analysis_context: str = "",
 ) -> int:
-    """Save one analysis and return its new database id."""
+    """Save one analysis and return its new database id.
+
+    The optional analyst context is stored separately so workbook reasoning
+    remains visible evidence without being mixed into the raw row values.
+    """
     confidences = [float(item["confidence"]) for item in ai_output]
     avg_confidence = sum(confidences) / len(confidences) if confidences else 0
     low_confidence_flag = any(
@@ -57,8 +71,10 @@ def save_submission(
                 ai_output,
                 avg_confidence,
                 low_confidence_flag
+                ,
+                analysis_context
             )
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 datetime.now(timezone.utc).isoformat(),
@@ -67,6 +83,7 @@ def save_submission(
                 json.dumps(ai_output),
                 avg_confidence,
                 int(low_confidence_flag),
+                analysis_context.strip(),
             ),
         )
         return int(cursor.lastrowid)
@@ -82,6 +99,7 @@ def _decode_submission(row: sqlite3.Row) -> dict[str, Any]:
         "ai_output": json.loads(row["ai_output"]),
         "avg_confidence": float(row["avg_confidence"]),
         "low_confidence_flag": bool(row["low_confidence_flag"]),
+        "analysis_context": row["analysis_context"] or "",
     }
 
 

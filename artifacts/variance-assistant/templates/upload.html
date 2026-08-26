@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Upload Workbook</h1>
+    <p class="subtitle font-mono mt-1">Import financial ledger for variance analysis</p>
+</div>
+
+{% if not is_mapping %}
+<!-- State 1: Upload -->
+<div class="card fade-in" style="max-width: 640px;">
+    {% if upload_error %}
+    <div class="banner banner-error mb-0" style="border-bottom: 0; border-radius: var(--radius-md) var(--radius-md) 0 0;">
+        <span class="banner-label">Error:</span>
+        <span class="banner-message">{{ upload_error }}</span>
+    </div>
+    {% endif %}
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <div class="card-body">
+            <div class="form-group" style="margin-bottom: 24px;">
+                <label class="data-label" style="display: block; margin-bottom: 8px;">Excel Workbook (.xlsx, .xlsm)</label>
+                <input type="file" name="workbook" accept=".xlsx,.xlsm" required class="file-input">
+            </div>
+            
+            <div class="form-group">
+                <label class="data-label" style="display: block; margin-bottom: 8px;">Analyst Context / Reasoning (Optional)</label>
+                <textarea name="reasoning" rows="3" class="text-input" placeholder="Enter market conditions, known events, or context...">{{ reasoning|default('') }}</textarea>
+            </div>
+        </div>
+        <div class="card-footer" style="justify-content: flex-end;">
+            <button type="submit" class="btn btn-primary">Continue to Mapping</button>
+        </div>
+    </form>
+</div>
+{% else %}
+<!-- State 2: Mapping -->
+<div class="card fade-in">
+    {% if mapping_error %}
+    <div class="banner banner-error mb-0" style="border-bottom: 0; border-radius: var(--radius-md) var(--radius-md) 0 0;">
+        <span class="banner-label">Error:</span>
+        <span class="banner-message">{{ mapping_error }}</span>
+        {% if mapping_errors %}
+        <ul class="banner-list">
+            {% for error in mapping_errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+    {% endif %}
+    <form action="/upload/analyze" method="post">
+        <input type="hidden" name="upload_token" value="{{ upload_token|default('') }}">
+        <input type="hidden" name="workbook_name" value="{{ workbook_name|default('') }}">
+        
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap;">
+            <div>
+                <h2 class="card-title mb-0" style="margin-bottom: 6px;">Data Mapping</h2>
+                <div class="metric-label" style="text-transform: none; font-family: var(--font-mono); font-size: 12px; color: var(--brass-bright);">
+                    <svg style="width: 14px; height: 14px; vertical-align: text-bottom; margin-right: 4px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    {{ workbook_name|default('Unknown Workbook') }}
+                </div>
+            </div>
+            <div class="form-group" style="min-width: 220px;">
+                <label class="data-label" style="display: block; margin-bottom: 6px;">Worksheet</label>
+                <div style="display: flex; gap: 8px;">
+                    <select name="selected_sheet" class="select-input">
+                        {% for sheet in sheets %}
+                        <option value="{{ sheet }}" {% if sheet == selected_sheet %}selected{% endif %}>{{ sheet }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" formaction="/upload/sheet" class="btn btn-secondary" style="padding: 0 12px;" title="Load Sheet">
+                        Load
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card-body">
+            <div class="mapping-grid">
+                <div class="form-group">
+                    <label class="data-label" style="display: block; margin-bottom: 6px;">Category Column</label>
+                    <select name="category_col" class="select-input" required>
+                        <option value="">Select column...</option>
+                        {% for col in columns %}
+                        <option value="{{ col.index }}" {% if col.index|string == selected_category|string %}selected{% endif %}>{{ col.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="data-label" style="display: block; margin-bottom: 6px;">Forecast Column</label>
+                    <select name="forecast_col" class="select-input" required>
+                        <option value="">Select column...</option>
+                        {% for col in columns %}
+                        <option value="{{ col.index }}" {% if col.index|string == selected_forecast|string %}selected{% endif %}>{{ col.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="data-label" style="display: block; margin-bottom: 6px;">Actual Column</label>
+                    <select name="actual_col" class="select-input" required>
+                        <option value="">Select column...</option>
+                        {% for col in columns %}
+                        <option value="{{ col.index }}" {% if col.index|string == selected_actual|string %}selected{% endif %}>{{ col.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="data-label" style="display: block; margin-bottom: 6px;">Notes Column (Optional)</label>
+                    <select name="notes_col" class="select-input">
+                        <option value="">None</option>
+                        {% for col in columns %}
+                        <option value="{{ col.index }}" {% if col.index|string == selected_notes|string %}selected{% endif %}>{{ col.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 24px;">
+                <label class="data-label" style="display: block; margin-bottom: 8px;">Analyst Context</label>
+                <textarea name="reasoning" rows="2" class="text-input" placeholder="Market context...">{{ reasoning|default('') }}</textarea>
+            </div>
+            
+            <label class="data-label" style="display: block; margin-bottom: 8px;">Data Preview</label>
+            <div class="table-responsive" style="border: 1px solid var(--border-dark); border-radius: var(--radius-sm); max-height: 280px; overflow-y: auto;">
+                <table class="data-table">
+                    <thead style="position: sticky; top: 0; z-index: 10; box-shadow: 0 1px 0 var(--border-dark);">
+                        <tr>
+                            {% for col in columns %}
+                            <th>{{ col.name }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in preview_rows %}
+                        <tr>
+                            {% for cell in row %}
+                            <td style="white-space: nowrap;">{{ cell }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="{{ columns|length|default(1) }}" style="text-align: center; color: var(--text-muted); padding: 24px;">No data preview available.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer" style="justify-content: space-between;">
+            <a href="/upload" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">Run Analysis</button>
+        </div>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

@@ -9,6 +9,44 @@
     <p class="subtitle font-mono mt-1">Report ID: {{ submission.id }} · {{ submission.timestamp }}</p>
 </div>
 
+{% if analysis_context %}
+<div class="context-panel fade-in">
+    <div class="context-label">Analyst Context</div>
+    <div class="context-body">{{ analysis_context }}</div>
+</div>
+{% endif %}
+
+{% if drivers %}
+<div class="variance-overview fade-in card mb-4">
+    <div class="card-header">
+        <h2 class="card-title mb-0">Variance Overview</h2>
+    </div>
+    <div class="card-body p-0">
+        <div class="overview-list">
+            {% for driver in drivers %}
+            <div class="overview-row">
+                <div class="overview-category" title="{{ driver.driver_category }}">{{ driver.driver_category }}</div>
+                <div class="overview-bar-cell">
+                    <div class="overview-bar-container">
+                        {% set is_fav = driver.variance < 0 %}
+                        {% set is_unfav = driver.variance > 0 %}
+                        <div class="overview-bar {% if is_fav %}bar-favorable{% elif is_unfav %}bar-unfavorable{% else %}bar-neutral{% endif %}" style="width: {{ driver.bar_width|default(0) }}%;"></div>
+                    </div>
+                </div>
+                <div class="overview-value font-mono {% if is_fav %}below-plan{% elif is_unfav %}above-plan{% endif %}">
+                    {% if driver.variance_pct is none %}
+                    N/A
+                    {% else %}
+                    {{ "{:+,.1f}%".format(driver.variance_pct) }}
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="results-grid fade-in">
     {# Positive means actual is above forecast; for an expense-style review that is unfavorable (red). #}
     {% for driver in drivers %}

@@ -17,7 +17,9 @@ AI_UNAVAILABLE_MESSAGE = (
 )
 
 
-def build_prompt(key_drivers: list[dict[str, Any]]) -> str:
+def build_prompt(
+    key_drivers: list[dict[str, Any]], analysis_context: str = ""
+) -> str:
     """Build the constrained prompt from computed drivers only.
 
     Takes the Stage 3 driver list and returns a prompt containing only the
@@ -32,6 +34,12 @@ def build_prompt(key_drivers: list[dict[str, Any]]) -> str:
         }
         for driver in key_drivers
     ]
+
+    context_block = (
+        f"\nAnalyst-provided reasoning or context:\n{analysis_context.strip()}\n"
+        if analysis_context.strip()
+        else ""
+    )
 
     return f"""
 You are explaining forecast-to-actual variance to a finance leadership audience.
@@ -53,6 +61,7 @@ driver_category exactly to the category name provided. The exact schema is:
 
 Computed key driver data:
 {json.dumps(driver_data, indent=2)}
+{context_block}
 """.strip()
 
 
@@ -156,6 +165,7 @@ def _openai_client() -> OpenAI:
 
 def analyze_key_drivers(
     key_drivers: list[dict[str, Any]],
+    analysis_context: str = "",
 ) -> tuple[list[dict[str, Any]], str | None]:
     """Call gpt-4o-mini, parse its JSON, and return flagged driver results.
 
@@ -169,7 +179,12 @@ def analyze_key_drivers(
     try:
         response = _openai_client().chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": build_prompt(key_drivers)}],
+            messages=[
+                {
+                    "role": "user",
+                    "content": build_prompt(key_drivers, analysis_context),
+                }
+            ],
             response_format={
                 "type": "json_schema",
                 "json_schema": {
