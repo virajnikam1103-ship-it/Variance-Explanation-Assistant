@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="empty-state card fade-in">
+    <p class="metric-card-title">{{ title }}</p>
+    <h1>{{ title }}</h1>
+    <p>{{ message }}</p>
+    <a href="{{ url_for('index') }}" class="btn btn-primary">Return to analysis</a>
+</section>
+{% endblock %}

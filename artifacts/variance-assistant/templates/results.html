@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-actions">
+        <a href="/" class="btn btn-secondary btn-sm">Back to Input</a>
+    </div>
+    <h1>Analysis Results</h1>
+    <p class="subtitle font-mono mt-1">Report ID: {{ submission.id }} · {{ submission.timestamp }}</p>
+</div>
+
+<div class="results-grid fade-in">
+    {# Positive means actual is above forecast; for an expense-style review that is unfavorable (red). #}
+    {% for driver in drivers %}
+    <div class="result-card card">
+        <div class="card-header">
+            <h2 class="card-title">{{ driver.driver_category }}</h2>
+            
+            <div class="metric-group">
+                <div class="metric">
+                    <span class="metric-label">Variance</span>
+                    <span class="metric-value {% if driver.variance > 0 %}above-plan{% elif driver.variance < 0 %}below-plan{% endif %}">
+                        {{ "{:+,.2f}".format(driver.variance) }}
+                    </span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">% Change</span>
+                    {% if driver.variance_pct is none %}
+                    <span class="metric-value">Undefined</span>
+                    {% else %}
+                    <span class="metric-value {% if driver.variance_pct > 0 %}above-plan{% elif driver.variance_pct < 0 %}below-plan{% endif %}">
+                        {{ "{:+,.1f}%".format(driver.variance_pct) }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="card-body">
+            <div class="data-row">
+                <span class="data-label">Classification</span>
+                <span class="badge badge-classification badge-{{ driver.classification }}">{{ driver.classification }}</span>
+            </div>
+            
+            {% if driver.low_confidence %}
+            <div class="warning-box">
+                <span class="warning-label">Low confidence — verify manually</span>
+                <p class="warning-text">This explanation is less than 60% confident and should be checked before sharing.</p>
+            </div>
+            {% endif %}
+
+            {% if driver.tag_mismatch %}
+            <div class="warning-box">
+                <span class="warning-label">AI classification differs from rule-based tag</span>
+                <p class="warning-text">Rule-based: <strong>{{ driver.rule_based_tag }}</strong> · AI: <strong>{{ driver.classification }}</strong></p>
+            </div>
+            {% endif %}
+
+            <div class="explanation-block">
+                <span class="data-label">Explanation</span>
+                <p class="explanation-text">{{ driver.explanation }}</p>
+            </div>
+        </div>
+        
+        <div class="card-footer">
+            <div class="confidence-indicator">
+                <span class="data-label">AI Confidence</span>
+                <div class="confidence-bar">
+                    <div class="confidence-fill {% if driver.low_confidence %}fill-low{% else %}fill-high{% endif %}" style="width: {{ driver.confidence }}%"></div>
+                </div>
+                <span class="confidence-score">{{ driver.confidence|int }}%</span>
+            </div>
+            {% if driver.low_confidence %}
+            <span class="badge badge-warning">Review Required</span>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No results found for this report.</p>
+        <a href="/" class="btn btn-primary">Create Analysis</a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

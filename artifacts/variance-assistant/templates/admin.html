@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Report History</h1>
+    <p class="subtitle">Past analyses and aggregate confidence metrics.</p>
+</div>
+
+<div class="metrics-dashboard fade-in">
+    <div class="metric-card card">
+        <h3 class="metric-card-title">Low Confidence Explanations</h3>
+        <p class="metric-card-value">{{ "{:.0f}".format(low_confidence_percentage) }}%</p>
+        <p class="metric-card-context">of reports have at least one low-confidence driver.</p>
+    </div>
+</div>
+
+<div class="card mt-6 fade-in" style="animation-delay: 0.1s">
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th class="numeric">Drivers</th>
+                    <th class="numeric">Avg. Confidence</th>
+                    <th>Low-confidence flag</th>
+                    <th class="action-cell">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for submission in submissions %}
+                <tr>
+                    <td><span class="font-mono">{{ submission.timestamp }}</span></td>
+                    <td class="numeric font-mono">{{ submission.computed_drivers|length }}</td>
+                    <td class="numeric font-mono">{{ "{:.0f}".format(submission.avg_confidence) }}%</td>
+                    <td>
+                        {% if submission.low_confidence_flag %}
+                        <span class="badge badge-warning">Needs Review</span>
+                        {% else %}
+                        <span class="badge badge-success">No Flag</span>
+                        {% endif %}
+                    </td>
+                    <td class="action-cell">
+                        <a href="{{ url_for('results', submission_id=submission.id) }}" class="btn btn-sm btn-secondary">View Results</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5">
+                        <div class="empty-state">
+                            <p>No reports yet — submit your first variance analysis.</p>
+                            <a href="{{ url_for('index') }}" class="btn btn-primary">Create First Analysis</a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

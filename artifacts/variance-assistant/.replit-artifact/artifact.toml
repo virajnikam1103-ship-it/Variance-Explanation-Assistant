@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Variance Explanation Assistant"
+description = "A structured finance analysis tool that compares forecast and actual values, identifies key variance drivers, generates cautious AI explanations, and saves reports for review."
+version = "1.0.0"
+id = "artifacts/variance-assistant"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24550
+
+[services.development]
+run = "pnpm --filter @workspace/variance-assistant run dev"
+
+[services.production.build]
+args = ["pnpm", "--filter", "@workspace/variance-assistant", "run", "build"]
+
+[services.production.run]
+args = ["python", "artifacts/variance-assistant/app.py"]
+
+[services.production.run.env]
+PORT = "24550"
+
+[services.env]
+PORT = "24550"
+BASE_PATH = "/"

@@ -31,6 +31,9 @@ node_modules
 /.sass-cache
 /connect.lock
 /coverage
+/artifacts/variance-assistant/variance.db
+__pycache__/
+*.py[cod]
 /libpeerconnection.log
 npm-debug.log
 yarn-error.log

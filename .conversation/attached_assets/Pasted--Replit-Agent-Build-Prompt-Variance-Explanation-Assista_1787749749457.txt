@@ -1,0 +1,137 @@
+# Replit Agent Build Prompt — Variance Explanation Assistant
+
+Copy everything below the line into Replit's AI Agent chat in one message.
+
+---
+
+Build a full-stack web app called **Variance Explanation Assistant** for finance analysts. I am a beginner (started Replit yesterday), so keep the code simple, use plain functions (not heavy abstractions/classes unless necessary), and add comments explaining what each section does and why.
+
+## Job to be done
+When a finance analyst sees a variance between forecast and actual numbers, they want to quickly understand what caused it and get a clear, defensible explanation for leadership.
+
+## Tech stack (use exactly this — no substitutions)
+- Python + Flask
+- SQLite (via Python's built-in `sqlite3` module — no ORM needed)
+- OpenAI API (`gpt-4o-mini`) for the LLM call — read the API key from an environment variable called `OPENAI_API_KEY` (I will set this in Replit Secrets myself, do not hardcode it or ask me to paste it in code)
+- Plain HTML/CSS for the frontend — no React, no Vue, no build step. Minimal vanilla JS only where absolutely necessary (e.g. adding a table row dynamically)
+
+## File structure (organize code to match these stages so I can commit one stage at a time)
+```
+/app.py                  -> Flask routes only (thin controllers)
+/logic.py                -> Stage 3: variance math + rule-based tagging (NO AI code here)
+/ai_client.py             -> Stage 4-6: prompt construction, OpenAI call, JSON parsing
+/database.py              -> Stage 8: SQLite setup + save/read functions
+/templates/index.html     -> Stage 1: input form
+/templates/results.html   -> Stage 9: results cards
+/templates/admin.html     -> Stage 10: admin dashboard
+/static/style.css
+/variance.db              -> created at runtime, gitignore this
+/.gitignore
+```
+
+## Required pipeline — implement in this exact order, and do not let any stage skip ahead of the one before it
+
+### 1. Structured input form (NOT a chatbox)
+- On `index.html`, show an editable **table/grid**, not free text input.
+- Columns: `Category` (text), `Forecast` (number), `Actual` (number), `Notes` (optional text).
+- Start with 3 empty rows visible; include an "Add Row" button (simple vanilla JS to append a row) and a "Remove Row" button per row.
+- A single "Analyze Variances" submit button posts all rows to the backend at once.
+
+### 2. Input validation (runs on the backend, before anything else)
+Validate every submitted row and reject the whole submission with clear, specific error messages if:
+- `Category` is empty or whitespace only
+- `Forecast` or `Actual` is missing or not a valid number
+- `Forecast` is negative (0 is allowed, negative is not)
+If validation fails, re-render the form with the user's entered values still filled in, plus a red error banner listing exactly which rows/fields failed and why. Do not proceed to any later stage if validation fails.
+
+### 3. Logic layer — plain Python, NO AI involved (put this entirely in `logic.py`)
+For each valid row, compute:
+- `variance = actual - forecast`
+- `variance_pct = (variance / forecast) * 100` — handle `forecast == 0` safely (avoid divide-by-zero; if forecast is 0, set variance_pct to `None` and note it's undefined)
+Then:
+- Rank all rows by **absolute value** of `variance` (largest first), and select the **top 3 to 5** as "key drivers" (5 if there are 5+ rows, otherwise however many rows exist, minimum 1).
+- Apply **rule-based pre-classification** using simple keyword matching (case-insensitive) on the `Notes` field for each key driver, in this priority order:
+  1. If notes contain "price" or "rate" → tag = `"price driver"`
+  2. Else if notes contain "delay", "pushed", or "early" → tag = `"timing driver"`
+  3. Else if notes field is empty/blank AND `abs(variance_pct)` is large (use a threshold of 25% — define this as a named constant so I can tune it later) → tag = `"anomaly"`
+  4. Else → tag = `"volume driver"` (default)
+Write this as a pure function, e.g. `compute_key_drivers(rows) -> list[dict]`, with no side effects and no network/API calls, so it's easy to test on its own.
+
+### 4. Prompt construction (in `ai_client.py`)
+Build a function `build_prompt(key_drivers)` that constructs a prompt sending **only** the computed key driver data to the LLM — never the raw full row list, and never anything not already computed in Stage 3. For each key driver include: `category`, `variance_pct`, `rule_based_tag`, `notes`.
+The prompt must explicitly instruct the model:
+- "Only use the numbers and tags provided below. Do not invent causes, root causes, or business context not supported by this data. If the data is insufficient to explain a driver with confidence, say so explicitly in the explanation and lower the confidence score accordingly."
+Request the response as **JSON only**, with this exact schema, one object per key driver, returned as a JSON array:
+```json
+[
+  {
+    "driver_category": "string, matching the category name given",
+    "classification": "one of: volume, price, timing, anomaly",
+    "explanation": "one sentence, plain English",
+    "confidence": 0
+  }
+]
+```
+
+### 5. Real LLM API call
+Call the OpenAI API using model `gpt-4o-mini`, sending the constructed prompt. Use the OpenAI Python SDK (`pip install openai`). Set `response_format` to enforce JSON output if the SDK version supports it; otherwise instruct strongly via the prompt and parse defensively (see Stage 6). Wrap the call in a `try/except` — if the API call fails (timeout, auth error, rate limit, network issue), catch it and return a clear error object rather than crashing the app.
+
+### 6. Output parsing
+Parse the returned JSON safely:
+- Strip markdown code fences (```json ... ```) if the model wraps its output in them.
+- Use `json.loads` inside a `try/except`.
+- If parsing fails, or the response is missing expected fields, or `classification` isn't one of the four allowed values, or `confidence` isn't a number 0–100 — do NOT crash. Instead, build a fallback object for that driver: `classification: "unknown"`, `explanation: "AI response could not be parsed — please review this driver manually."`, `confidence: 0`.
+
+### 7. Confidence/flag check
+For each parsed driver result:
+- If `confidence < 60`, set a flag: `low_confidence = True`.
+- If `classification` (from AI) does not match `rule_based_tag` (from Stage 3, ignoring the word "driver" — e.g. "price driver" vs "price"), set a flag: `tag_mismatch = True`.
+Both flags should be visually shown in the UI in Stage 9, they are not mutually exclusive.
+
+### 8. Database persistence (in `database.py`, SQLite)
+On app startup, create the database file and a table (if it doesn't already exist) with columns to store, per submission:
+- `id` (primary key, autoincrement)
+- `timestamp`
+- `raw_input` (JSON string of all submitted rows)
+- `computed_drivers` (JSON string of Stage 3 output)
+- `ai_output` (JSON string of Stage 6/7 parsed + flagged output)
+- `avg_confidence` (float, computed across that submission's drivers)
+- `low_confidence_flag` (boolean — true if ANY driver in this submission had confidence < 60)
+Write clear functions: `init_db()`, `save_submission(...)`, `get_all_submissions()`, `get_submission_by_id(id)`.
+
+### 9. Structured UI output (`results.html`)
+Display results as readable **cards**, one per key driver — never show raw JSON to the user. Each card shows:
+- Driver/category name
+- Variance % (formatted, e.g. "+18.4%" or "−9.2%", with color: green for favorable, red for unfavorable — you decide the convention and note it in a comment)
+- A color-coded classification badge (e.g. blue=volume, orange=price, purple=timing, red=anomaly)
+- The one-sentence explanation
+- A confidence bar or percentage, visually distinct (e.g. a horizontal bar filled proportionally)
+- If `low_confidence` is true: a clearly visible "⚠️ Low confidence — verify manually" badge
+- If `tag_mismatch` is true: a clearly visible "⚠️ AI classification differs from rule-based tag" badge, showing both tags
+
+### 10. Admin dashboard (`/admin` route, `admin.html`)
+- List all past submissions in a table: timestamp, number of drivers, avg confidence, whether it had a low-confidence flag, with a link/button to view that submission's full results again.
+- Show one aggregate stat at the top: "**X% of reports have at least one low-confidence driver**" computed from all submissions in the database.
+- Handle the empty-database state gracefully (e.g. "No reports yet — submit your first variance analysis" instead of a blank/broken table).
+
+## Error handling requirements (apply throughout, not just Stage 6)
+- OpenAI API failures (timeout, auth, rate limit) → user-facing message: "AI analysis is temporarily unavailable — your data was not lost, please try again" (do not lose the user's submitted form data on failure).
+- Invalid input → specific field-level errors as described in Stage 2.
+- Empty database on `/admin` → friendly empty state, not a crash or blank page.
+- Any unhandled exception → a generic Flask error handler that shows a plain "Something went wrong" page instead of a stack trace to the end user (but log the real error to the console for me to debug).
+
+## Git commit structure
+Please build and structure the code so it naturally supports 6 commits in this order, and pause after generating each stage so I can commit before moving to the next stage. Do not squash everything into one giant commit:
+1. `input form` — Stage 1 (structured grid form, no backend logic yet, no validation)
+2. `logic layer` — Stage 2 + 3 (validation + variance math + rule-based tagging, testable without AI)
+3. `AI integration` — Stage 4 + 5 + 6 (prompt construction, OpenAI call, safe JSON parsing)
+4. `database` — Stage 7 + 8 (confidence/mismatch flags + SQLite persistence)
+5. `dashboard` — Stage 9 + 10 (results cards UI + admin dashboard)
+6. `polish/error handling` — final pass: all error handling above, styling cleanup, edge cases (zero forecast, single row, all-favorable variances, etc.)
+
+## Comments requirement
+Since I'm a beginner, add a short comment above each function explaining: what it does, what it takes in, what it returns, and why that logic exists (especially in `logic.py` — I need to understand the rule-based tagging so I can defend it to my own team).
+
+Please confirm the plan briefly, then start with Stage 1 only, and stop for my review before continuing.
+
+---
