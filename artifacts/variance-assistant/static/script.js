@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnAddRow = document.getElementById('btn-add-row');
     const varianceForm = document.getElementById('variance-form');
     const btnAnalyze = document.getElementById('btn-analyze');
+    const printReportButton = document.querySelector('[data-print-report]');
 
     if (appLayout && sidebarToggle) {
         const sidebarStateKey = 'variance-assistant-sidebar-state';
@@ -98,6 +99,22 @@ document.addEventListener('DOMContentLoaded', () => {
             btnAnalyze.disabled = true;
             btnText.textContent = 'Analyzing...';
             if (loader) loader.classList.remove('hidden');
+        });
+    }
+
+    if (printReportButton) {
+        const originalTitle = document.title;
+        const printTitle = printReportButton.dataset.printTitle;
+
+        printReportButton.addEventListener('click', () => {
+            if (printTitle) {
+                document.title = `${printTitle} - Variance Report`;
+            }
+            window.print();
+        });
+
+        window.addEventListener('afterprint', () => {
+            document.title = originalTitle;
         });
     }
 });

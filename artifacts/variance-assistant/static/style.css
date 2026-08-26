@@ -689,3 +689,230 @@ select.select-input { appearance: none; background-image: url("data:image/svg+xm
         animation: none;
     }
 }
+
+/* PDF export: the browser's print dialog turns this report into a clean,
+   shareable snapshot without changing the saved SQLite record. */
+@media print {
+    @page {
+        size: A4;
+        margin: 14mm 12mm;
+    }
+
+    html,
+    body {
+        background: #ffffff !important;
+        color: var(--ink) !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    body {
+        font-size: 10pt;
+    }
+
+    .app-sidebar,
+    .sidebar-toggle,
+    .header-actions,
+    .banner {
+        display: none !important;
+    }
+
+    .app-layout {
+        display: block;
+        min-height: 0;
+    }
+
+    .app-main {
+        min-height: 0;
+        padding: 0;
+    }
+
+    .app-main::before,
+    .app-main::after {
+        display: none;
+    }
+
+    .container {
+        max-width: none;
+        padding: 0;
+    }
+
+    .page-header {
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid var(--brass);
+    }
+
+    .page-header h1 {
+        color: var(--ink);
+        font-size: 23pt;
+    }
+
+    .subtitle {
+        color: var(--slate);
+        font-size: 9pt;
+    }
+
+    .context-panel,
+    .card,
+    .kpi-card {
+        background: #ffffff !important;
+        color: var(--ink) !important;
+        border-color: var(--hairline) !important;
+        box-shadow: none !important;
+    }
+
+    .context-panel {
+        border-left-color: var(--slate) !important;
+        margin-bottom: 16px;
+        padding: 11px 14px;
+    }
+
+    .context-label,
+    .data-label,
+    .metric-label,
+    .kpi-label,
+    .data-table th {
+        color: var(--slate) !important;
+    }
+
+    .context-body,
+    .card-body,
+    .explanation-text,
+    .warning-text {
+        color: var(--ink) !important;
+    }
+
+    .kpi-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+
+    .kpi-card {
+        padding: 11px;
+    }
+
+    .kpi-value {
+        color: var(--ink) !important;
+        font-size: 15pt;
+        overflow-wrap: anywhere;
+    }
+
+    .kpi-value-compact {
+        font-size: 10pt;
+    }
+
+    .kpi-context,
+    .metric-value,
+    .confidence-score {
+        color: var(--ink);
+    }
+
+    .variance-overview {
+        margin-bottom: 16px;
+    }
+
+    .card-header,
+    .card-footer,
+    .data-table th {
+        background: #f4f4f1 !important;
+        border-color: var(--hairline) !important;
+    }
+
+    .card-title,
+    .metric-value,
+    .data-table td:first-child,
+    .text-white {
+        color: var(--ink) !important;
+    }
+
+    .overview-row,
+    .data-table th,
+    .data-table td {
+        border-color: var(--hairline) !important;
+    }
+
+    .overview-category,
+    .overview-value,
+    .text-muted,
+    .text-faint {
+        color: var(--slate) !important;
+    }
+
+    .overview-bar-container,
+    .confidence-track {
+        background: #e7e7e2 !important;
+    }
+
+    .results-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+
+    .result-card,
+    .variance-overview,
+    .kpi-card,
+    .context-panel {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .result-card .card-header {
+        padding: 12px;
+    }
+
+    .result-card .card-body,
+    .result-card .card-footer {
+        padding: 12px;
+    }
+
+    .warning-box {
+        background: #fff4f2 !important;
+        border-color: #d9a7a2 !important;
+    }
+
+    .warning-label,
+    .negative,
+    .unfavorable,
+    .above-plan {
+        color: #8e2f2f !important;
+    }
+
+    .positive,
+    .favorable,
+    .below-plan {
+        color: #175c43 !important;
+    }
+
+    .badge,
+    .badge-classification,
+    .badge-warning {
+        color: var(--ink) !important;
+        border-color: var(--slate) !important;
+        background: transparent !important;
+    }
+
+    .table-responsive {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    .data-table {
+        min-width: 0;
+        font-size: 8.5pt;
+    }
+
+    .data-table td:last-child {
+        max-width: none;
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .fade-in {
+        animation: none !important;
+    }
+}

@@ -1,1 +1,2 @@
 - [Google Sheets import boundary](google-sheets-import.md) — imports use public/shareable Google Sheets CSV exports; private files need an OAuth-backed connection.
+- [Native print verification](native-print-verification.md) — browser automation can verify the print trigger and page stability, but not the operating system's native print dialog.

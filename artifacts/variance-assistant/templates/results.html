@@ -3,6 +3,21 @@
 {% block content %}
 <div class="page-header">
     <div class="header-actions">
+        <button
+            type="button"
+            class="btn btn-primary btn-sm"
+            data-print-report
+            data-print-title="{{ report.title|default('Variance Report') }}"
+            aria-label="Export {{ report.title|default('variance report') }} as a PDF"
+        >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <path d="M12 12v6"></path>
+                <path d="m9 15 3 3 3-3"></path>
+            </svg>
+            Export PDF
+        </button>
         <a href="{{ url_for('projects') }}" class="btn btn-secondary btn-sm">All Projects</a>
     </div>
     {% if report %}
