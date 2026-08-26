@@ -176,7 +176,58 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     outline-offset: -2px;
 }
 
-.app-main { flex: 1; min-width: 0; padding: 48px 0 80px; }
+.app-main {
+    position: relative;
+    isolation: isolate;
+    flex: 1;
+    min-width: 0;
+    padding: 48px 0 80px;
+}
+
+.app-main::before,
+.app-main::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Quiet market-grid linework keeps the negative space intentional without
+   competing with the ledger or report content. */
+.app-main::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='200' viewBox='0 0 280 200' fill='none'%3E%3Cpath d='M0 40H280M0 90H280M0 140H280M70 0V200M140 0V200M210 0V200' stroke='%233a4658' stroke-opacity='.28' stroke-width='1'/%3E%3C/svg%3E");
+    background-size: 280px 200px;
+    opacity: .24;
+    animation: marketGridDrift 28s linear infinite;
+}
+
+/* An abstract price trace and markers make the motion legible as finance
+   context, while the opacity keeps it subordinate to foreground UI. */
+.app-main::after {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='940' height='500' viewBox='0 0 940 500' fill='none'%3E%3Cpath d='M0 390L76 350L138 365L218 280L290 310L375 220L450 250L532 166L608 204L690 115L775 150L860 62L940 92' stroke='%23a6803d' stroke-opacity='.33' stroke-width='2'/%3E%3Cpath d='M0 392L76 352L138 367L218 282L290 312L375 222L450 252L532 168L608 206L690 117L775 152L860 64L940 94' stroke='%2372b195' stroke-opacity='.20' stroke-width='1' stroke-dasharray='3 9'/%3E%3Ccircle cx='218' cy='280' r='4' fill='%23a6803d' fill-opacity='.48'/%3E%3Ccircle cx='532' cy='166' r='4' fill='%2372b195' fill-opacity='.42'/%3E%3Ccircle cx='860' cy='62' r='4' fill='%23a6803d' fill-opacity='.48'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 18% bottom 2%;
+    background-size: min(940px, 72vw) auto;
+    opacity: .42;
+    transform: translate3d(0, 0, 0);
+    animation: marketTraceDrift 22s ease-in-out infinite alternate;
+}
+
+.main-content {
+    position: relative;
+    z-index: 1;
+}
+
+@keyframes marketGridDrift {
+    from { background-position: 0 0; }
+    to { background-position: 70px 40px; }
+}
+
+@keyframes marketTraceDrift {
+    from { transform: translate3d(0, 0, 0) scale(1); }
+    to { transform: translate3d(-24px, 12px, 0) scale(1.025); }
+}
 .container { max-width: 1080px; margin: 0 auto; padding: 0 40px; }
 .page-header { margin-bottom: 28px; }
 .eyebrow { display: flex; align-items: center; gap: 9px; color: var(--brass-bright); font: 500 10px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 15px; }
@@ -608,9 +659,12 @@ select.select-input { appearance: none; background-image: url("data:image/svg+xm
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .app-main::before,
+    .app-main::after,
     .app-sidebar,
     .sidebar-toggle,
     .sidebar-toggle-icon span {
         transition: none;
+        animation: none;
     }
 }
