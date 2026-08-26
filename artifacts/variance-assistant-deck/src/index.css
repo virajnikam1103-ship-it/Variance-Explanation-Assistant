@@ -1,0 +1,40 @@
+@import 'tailwindcss';
+
+@theme inline {
+  --color-primary: var(--slide-primary);
+  --color-accent: var(--slide-accent);
+  --color-bg: var(--slide-bg);
+  --color-text: var(--slide-text);
+  --color-muted: var(--slide-muted);
+  --font-display: var(--font-display-family);
+  --font-body: var(--font-body-family);
+}
+
+:root {
+  --slide-primary: #7AA2F7;
+  --slide-accent: #9ECE6A;
+  --slide-bg: #1A1B26;
+  --slide-text: #C0CAF5;
+  --slide-muted: #9AA5CE;
+  --slide-dim: #565F89;
+  --slide-panel: #16161E;
+  --slide-line: rgba(255,255,255,.09);
+  --slide-amber: #E0AF68;
+  --font-display-family: 'Inter', sans-serif;
+  --font-body-family: 'Inter', sans-serif;
+  --font-mono-family: 'DM Mono', monospace;
+  color-scheme: dark;
+}
+html, body, #root { width:100%; height:100%; margin:0; }
+body { background:var(--slide-bg); color:var(--slide-text); font-family:var(--font-body-family); }
+.slide { width:100vw; height:100vh; overflow:hidden; }
+.slide-viewer { touch-action:none; user-select:none; -webkit-user-select:none; }
+.mono { font-family:var(--font-mono-family); }
+.panel { background:var(--slide-panel); border:1px solid var(--slide-line); }
+.rail { border-right:1px solid rgba(255,255,255,.06); }
+.soft-grid { background-image:linear-gradient(rgba(122,162,247,.035) 1px, transparent 1px),linear-gradient(90deg,rgba(122,162,247,.035) 1px,transparent 1px); background-size:4vw 4vw; }
+/* Keep the template's compact labels legible in 1920×1080 export. */
+[class*="text-[."] ,
+[class*="text-[1."] ,
+[class*="text-[1vw]"] { font-size:1.5vw !important; }
+@media print { .slide { break-after:page; } }

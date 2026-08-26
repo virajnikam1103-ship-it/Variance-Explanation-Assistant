@@ -1,0 +1,10 @@
+[
+  {"id":"f3b6d8c1-3c37-4c2f-9a01-1a0d56d4f501","position":1,"filepath":"src/pages/slides/Slide1.tsx","title":"Variance Explanation Assistant","description":"From ledger inputs to evidence-led financial narratives.","speakerNotes":""},
+  {"id":"5fd2e7b4-6bd8-4b1a-9f40-2b06a31c7d12","position":2,"filepath":"src/pages/slides/Slide2.tsx","title":"Why variance review needs a controlled path","description":"The review problem across mixed formats, buried drivers, and traceability needs.","speakerNotes":""},
+  {"id":"8c0a1e95-7a15-4f67-b813-3d2b47e6a823","position":3,"filepath":"src/pages/slides/Slide3.tsx","title":"One workflow, multiple finance sources","description":"Manual entry, Excel, PDF, and Google Sheets through one analysis path.","speakerNotes":""},
+  {"id":"a72d6f34-1e88-4c09-b265-4f3a9b51d734","position":4,"filepath":"src/pages/slides/Slide4.tsx","title":"Logic before AI","description":"Deterministic calculations and driver tagging provide structured evidence to AI.","speakerNotes":""},
+  {"id":"c91e4b27-5f60-4a83-8d12-6e7c2f40b965","position":5,"filepath":"src/pages/slides/Slide5.tsx","title":"An analyst-ready review surface","description":"KPIs, drivers, evidence, confidence, ledger detail, and Indian finance conventions.","speakerNotes":""},
+  {"id":"d64f8a02-2b73-4e19-a956-7c1d30f6b876","position":6,"filepath":"src/pages/slides/Slide6.tsx","title":"Secure paths for connected data","description":"Public export and managed private Google Sheets access with clear boundaries.","speakerNotes":""},
+  {"id":"e25a9c63-8d41-4b70-b127-9f3e5d62c087","position":7,"filepath":"src/pages/slides/Slide7.tsx","title":"Saved reports that travel with the review","description":"Saved history and print-ready reports carry the evidence forward.","speakerNotes":""},
+  {"id":"b18c7d49-6e25-4f03-a892-0d54b3e7f218","position":8,"filepath":"src/pages/slides/Slide8.tsx","title":"Ready for the next reporting cycle","description":"Publish, validate, and turn variance review into a consistent operating rhythm.","speakerNotes":""}
+]

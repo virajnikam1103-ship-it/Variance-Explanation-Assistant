@@ -1,0 +1,28 @@
+kind = "slides"
+previewPath = "/variance-assistant-deck/"
+title = "Variance Explanation Assistant"
+description = "A project overview deck for finance and product stakeholders showing how the Variance Explanation Assistant turns mixed-source ledger data into evidence-led variance narratives, saved reports, and shareable reviews."
+version = "1.0.0"
+id = "artifacts/variance-assistant-deck"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/variance-assistant-deck/" ]
+localPort = 19104
+
+[services.development]
+run = "pnpm --filter @workspace/variance-assistant-deck run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/variance-assistant-deck", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/variance-assistant-deck/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19104"
+BASE_PATH = "/variance-assistant-deck/"
