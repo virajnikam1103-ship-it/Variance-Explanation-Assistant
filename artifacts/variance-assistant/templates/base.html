@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Variance Assistant</title>
+    <title>Variance Assistant | Financial Review Desk</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,16 +13,19 @@
     <header class="app-header">
         <div class="container header-content">
             <div class="logo">
-                <a href="/">VarianceAssistant</a>
+                <a href="/" aria-label="Variance Assistant home">
+                    <span class="logo-mark" aria-hidden="true">VA</span>
+                    <span>Variance<span class="logo-muted">Assistant</span></span>
+                </a>
             </div>
             <nav class="main-nav">
-                <a href="/">New Analysis</a>
-                <a href="/admin">History</a>
+                <a href="/" class="nav-link nav-link-active">New Analysis</a>
+                <a href="/admin" class="nav-link">History</a>
             </nav>
         </div>
     </header>
     
-    <main class="container">
+    <main class="container app-main">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% for category, message in messages %}
             <div class="banner banner-warning fade-in" role="status">
