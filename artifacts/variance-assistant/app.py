@@ -18,13 +18,16 @@ from database import (
     save_submission,
 )
 from excel_parser import extract_variance_rows, get_sheet_preview, get_workbook_metadata
+from google_sheets import download_google_sheet
 from logic import compute_key_drivers
+from pdf_parser import extract_pdf_variance_rows, get_pdf_metadata, get_pdf_preview
 from presentation import (
     build_report_presentation,
     format_indian_date,
     format_inr,
     project_summary,
 )
+from tabular_parser import extract_csv_variance_rows, get_csv_metadata, get_csv_preview
 
 
 app = Flask(__name__)
@@ -33,11 +36,11 @@ app.config["TEMPLATES_AUTO_RELOAD"] = True
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
 
 UPLOAD_DIRECTORY = Path(__file__).with_name("uploads")
-ALLOWED_WORKBOOK_EXTENSIONS = {".xlsx", ".xlsm"}
+ALLOWED_UPLOAD_EXTENSIONS = {".xlsx", ".xlsm", ".pdf"}
 
 
 def _upload_path(upload_token: str) -> Path | None:
-    """Resolve a temporary workbook token without accepting arbitrary paths."""
+    """Resolve a temporary source token without accepting arbitrary paths."""
     if not upload_token or Path(upload_token).name != upload_token:
         return None
     candidate = UPLOAD_DIRECTORY / upload_token
@@ -45,7 +48,7 @@ def _upload_path(upload_token: str) -> Path | None:
 
 
 def _delete_upload(upload_token: str) -> None:
-    """Remove a temporary workbook after its analysis has been processed."""
+    """Remove a temporary source after its analysis has been processed."""
     path = _upload_path(upload_token)
     if path:
         path.unlink(missing_ok=True)
@@ -66,6 +69,8 @@ def _upload_template_context(
         "mapping_errors": values.get("mapping_errors", []),
         "upload_token": values.get("upload_token", ""),
         "workbook_name": values.get("workbook_name", ""),
+        "source_kind": values.get("source_kind", "workbook"),
+        "source_label": values.get("source_label", "Workbook"),
         "sheets": values.get("sheets", []),
         "selected_sheet": values.get("selected_sheet", ""),
         "columns": values.get("columns", []),
@@ -81,6 +86,61 @@ def _upload_template_context(
 def _render_upload(**context: Any):
     """Render the upload screen with explicit, safe template defaults."""
     return render_template("upload.html", **_upload_template_context(**context))
+
+
+def _source_metadata(path: Path, source_kind: str) -> dict[str, Any]:
+    if source_kind == "pdf":
+        return get_pdf_metadata(path)
+    if source_kind == "google_sheet":
+        return get_csv_metadata(path)
+    return get_workbook_metadata(path)
+
+
+def _source_preview(
+    path: Path, source_kind: str, selected_sheet: str
+) -> tuple[list[dict[str, Any]], list[list[str]]]:
+    if source_kind == "pdf":
+        return get_pdf_preview(path, selected_sheet)
+    if source_kind == "google_sheet":
+        return get_csv_preview(path, selected_sheet)
+    return get_sheet_preview(path, selected_sheet)
+
+
+def _source_rows(
+    path: Path,
+    source_kind: str,
+    selected_sheet: str,
+    category_index: int,
+    forecast_index: int,
+    actual_index: int,
+    notes_index: int | None,
+) -> list[dict[str, str]]:
+    if source_kind == "pdf":
+        return extract_pdf_variance_rows(
+            path,
+            selected_sheet,
+            category_index,
+            forecast_index,
+            actual_index,
+            notes_index,
+        )
+    if source_kind == "google_sheet":
+        return extract_csv_variance_rows(
+            path,
+            selected_sheet,
+            category_index,
+            forecast_index,
+            actual_index,
+            notes_index,
+        )
+    return extract_variance_rows(
+        path,
+        selected_sheet,
+        category_index,
+        forecast_index,
+        actual_index,
+        notes_index,
+    )
 
 
 @app.template_filter("inr")
@@ -130,6 +190,20 @@ def _submitted_rows() -> list[dict[str, str]]:
     ]
 
 
+def _parse_amount(value: str) -> float:
+    """Accept plain or Indian-formatted numeric amounts from imported sources."""
+    normalized = (
+        value.strip()
+        .replace("₹", "")
+        .replace(",", "")
+        .replace(" ", "")
+        .replace("\u2212", "-")
+    )
+    if normalized.startswith("(") and normalized.endswith(")"):
+        normalized = f"-{normalized[1:-1]}"
+    return float(normalized)
+
+
 def _validate_rows(rows: list[dict[str, str]]) -> tuple[list[dict[str, Any]], list[str]]:
     """Validate every row and return clean numeric rows plus field-level errors."""
     valid_rows: list[dict[str, Any]] = []
@@ -149,7 +223,7 @@ def _validate_rows(rows: list[dict[str, str]]) -> tuple[list[dict[str, Any]], li
             row_errors.append("Forecast is required.")
         else:
             try:
-                forecast = float(forecast_text)
+                forecast = _parse_amount(forecast_text)
                 if not math.isfinite(forecast):
                     raise ValueError
             except ValueError:
@@ -163,7 +237,7 @@ def _validate_rows(rows: list[dict[str, str]]) -> tuple[list[dict[str, Any]], li
             row_errors.append("Actual is required.")
         else:
             try:
-                actual = float(actual_text)
+                actual = _parse_amount(actual_text)
                 if not math.isfinite(actual):
                     raise ValueError
             except ValueError:
@@ -203,45 +277,87 @@ def new_analysis():
 @app.get("/upload")
 @app.get("/analysis/upload")
 def upload():
-    """Render the consolidated workbook upload screen."""
+    """Render the consolidated source import screen."""
     return _render_upload()
 
 
 @app.post("/upload")
 @app.post("/analysis/upload")
 def upload_workbook():
-    """Save a workbook temporarily and render its sheet and column mapper."""
+    """Save an Excel/PDF source temporarily and render its mapper."""
     workbook_file = request.files.get("workbook")
     reasoning = request.form.get("reasoning", "").strip()
     if workbook_file is None or not workbook_file.filename:
-        return _render_upload(upload_error="Choose an Excel workbook to continue."), 400
+        return _render_upload(upload_error="Choose an Excel workbook or PDF to continue."), 400
 
     suffix = Path(workbook_file.filename).suffix.casefold()
-    if suffix not in ALLOWED_WORKBOOK_EXTENSIONS:
+    if suffix not in ALLOWED_UPLOAD_EXTENSIONS:
         return _render_upload(
-            upload_error="Only .xlsx and .xlsm workbooks are supported."
+            upload_error="Use an .xlsx, .xlsm, or .pdf file."
         ), 400
 
     UPLOAD_DIRECTORY.mkdir(exist_ok=True)
     upload_token = f"{uuid.uuid4().hex}{suffix}"
     upload_path = UPLOAD_DIRECTORY / secure_filename(upload_token)
     workbook_file.save(upload_path)
+    source_kind = "pdf" if suffix == ".pdf" else "workbook"
+    source_label = "PDF" if source_kind == "pdf" else "Excel workbook"
 
     try:
-        metadata = get_workbook_metadata(upload_path)
+        metadata = _source_metadata(upload_path, source_kind)
         if not metadata["sheets"]:
-            raise ValueError("The workbook does not contain a worksheet.")
+            raise ValueError("The source does not contain a readable table.")
     except Exception as error:  # noqa: BLE001 - malformed files need a friendly response.
         upload_path.unlink(missing_ok=True)
-        print(f"Workbook metadata failed: {error}")
+        print(f"{source_label} metadata failed: {error}")
         return _render_upload(
-            upload_error="We could not read that workbook. Check that it is a valid Excel file."
+            upload_error=f"We could not read that {source_label.lower()}. "
+            "Check that it contains a text-based table with Category, Forecast, and Actual data."
         ), 400
 
     return _render_upload(
         is_mapping=True,
         upload_token=upload_token,
         workbook_name=secure_filename(workbook_file.filename),
+        source_kind=source_kind,
+        source_label=source_label,
+        sheets=metadata["sheets"],
+        selected_sheet=metadata["sheets"][0],
+        columns=metadata["columns"],
+        preview_rows=metadata["preview_rows"],
+        reasoning=reasoning,
+    )
+
+
+@app.post("/upload/google-sheet")
+def upload_google_sheet():
+    """Download a public Google Sheet as CSV and render the shared mapper."""
+    sheet_url = request.form.get("google_sheet_url", "").strip()
+    reasoning = request.form.get("reasoning", "").strip()
+    if not sheet_url:
+        return _render_upload(
+            upload_error="Paste a Google Sheets link to continue."
+        ), 400
+
+    UPLOAD_DIRECTORY.mkdir(exist_ok=True)
+    upload_token = f"{uuid.uuid4().hex}.csv"
+    upload_path = UPLOAD_DIRECTORY / upload_token
+    try:
+        download_google_sheet(sheet_url, upload_path)
+        metadata = get_csv_metadata(upload_path)
+    except Exception as error:  # noqa: BLE001 - remote source failures need friendly copy.
+        upload_path.unlink(missing_ok=True)
+        print(f"Google Sheet import failed: {error}")
+        return _render_upload(
+            upload_error=str(error)
+        ), 400
+
+    return _render_upload(
+        is_mapping=True,
+        upload_token=upload_token,
+        workbook_name="Google Sheet",
+        source_kind="google_sheet",
+        source_label="Google Sheet",
         sheets=metadata["sheets"],
         selected_sheet=metadata["sheets"][0],
         columns=metadata["columns"],
@@ -252,24 +368,30 @@ def upload_workbook():
 
 @app.post("/upload/sheet")
 def load_workbook_sheet():
-    """Refresh the mapper preview when the analyst chooses another worksheet."""
+    """Refresh the mapper preview for an uploaded source."""
     upload_token = request.form.get("upload_token", "")
     upload_path = _upload_path(upload_token)
     workbook_name = request.form.get("workbook_name", "Uploaded workbook")
+    source_kind = request.form.get("source_kind", "workbook")
+    source_label = request.form.get("source_label", "Workbook")
     reasoning = request.form.get("reasoning", "").strip()
     selected_sheet = request.form.get("selected_sheet", "")
     if upload_path is None:
         return _render_upload(
-            upload_error="This workbook upload has expired. Please attach it again."
+            upload_error="This source upload has expired. Please attach it again."
         ), 400
 
     try:
-        metadata = get_workbook_metadata(upload_path)
-        columns, preview_rows = get_sheet_preview(upload_path, selected_sheet)
+        metadata = _source_metadata(upload_path, source_kind)
+        columns, preview_rows = _source_preview(
+            upload_path, source_kind, selected_sheet
+        )
         return _render_upload(
             is_mapping=True,
             upload_token=upload_token,
             workbook_name=workbook_name,
+            source_kind=source_kind,
+            source_label=source_label,
             sheets=metadata["sheets"],
             selected_sheet=selected_sheet,
             columns=columns,
@@ -277,23 +399,28 @@ def load_workbook_sheet():
             reasoning=reasoning,
         )
     except Exception as error:  # noqa: BLE001 - invalid sheet selections need a friendly response.
-        print(f"Workbook sheet preview failed: {error}")
+        print(f"{source_label} preview failed: {error}")
         return _render_upload(
             is_mapping=True,
-            mapping_error="We could not load that worksheet. Choose another sheet and try again.",
+            mapping_error=f"We could not load that {source_label.lower()} section. "
+            "Choose another one and try again.",
             upload_token=upload_token,
             workbook_name=workbook_name,
-            sheets=get_workbook_metadata(upload_path)["sheets"],
+            source_kind=source_kind,
+            source_label=source_label,
+            sheets=_source_metadata(upload_path, source_kind)["sheets"],
             reasoning=reasoning,
         ), 400
 
 
 @app.post("/upload/analyze")
 def analyze_workbook():
-    """Map an uploaded workbook into variance rows, analyze it, and save the report."""
+    """Map an imported source into variance rows, analyze it, and save the report."""
     upload_token = request.form.get("upload_token", "")
     upload_path = _upload_path(upload_token)
     workbook_name = request.form.get("workbook_name", "Uploaded workbook")
+    source_kind = request.form.get("source_kind", "workbook")
+    source_label = request.form.get("source_label", "Workbook")
     reasoning = request.form.get("reasoning", "").strip()
     selected_sheet = request.form.get("selected_sheet", "")
     try:
@@ -308,13 +435,15 @@ def analyze_workbook():
             mapping_error="Choose a category, forecast, and actual column before analyzing.",
             upload_token=upload_token,
             workbook_name=workbook_name,
+            source_kind=source_kind,
+            source_label=source_label,
             reasoning=reasoning,
             selected_sheet=selected_sheet,
         ), 400
 
     if upload_path is None:
         return _render_upload(
-            upload_error="This workbook upload has expired. Please attach it again."
+            upload_error="This source upload has expired. Please attach it again."
         ), 400
 
     delete_after_request = False
@@ -325,12 +454,19 @@ def analyze_workbook():
                 mapping_error="Category, forecast, and actual must be different columns.",
                 upload_token=upload_token,
                 workbook_name=workbook_name,
+                source_kind=source_kind,
+                source_label=source_label,
                 reasoning=reasoning,
                 selected_sheet=selected_sheet,
             ), 400
-        columns, preview_rows = get_sheet_preview(upload_path, selected_sheet)
-        mapped_rows = extract_variance_rows(
+        columns, preview_rows = _source_preview(
             upload_path,
+            source_kind,
+            selected_sheet,
+        )
+        mapped_rows = _source_rows(
+            upload_path,
+            source_kind,
             selected_sheet,
             category_index,
             forecast_index,
@@ -345,7 +481,9 @@ def analyze_workbook():
                 mapping_errors=errors,
                 upload_token=upload_token,
                 workbook_name=workbook_name,
-                sheets=get_workbook_metadata(upload_path)["sheets"],
+                source_kind=source_kind,
+                source_label=source_label,
+                sheets=_source_metadata(upload_path, source_kind)["sheets"],
                 selected_sheet=selected_sheet,
                 columns=columns,
                 preview_rows=preview_rows,
@@ -369,12 +507,15 @@ def analyze_workbook():
         delete_after_request = True
         return redirect(url_for("results", submission_id=submission_id))
     except Exception as error:  # noqa: BLE001 - file parsing must fail safely.
-        print(f"Workbook analysis failed: {error}")
+        print(f"{source_label} analysis failed: {error}")
         return _render_upload(
             is_mapping=True,
-            mapping_error="We could not process that workbook selection. Check the sheet and columns, then try again.",
+            mapping_error=f"We could not process that {source_label.lower()} selection. "
+            "Check the source and columns, then try again.",
             upload_token=upload_token,
             workbook_name=workbook_name,
+            source_kind=source_kind,
+            source_label=source_label,
             reasoning=reasoning,
             selected_sheet=selected_sheet,
         ), 400

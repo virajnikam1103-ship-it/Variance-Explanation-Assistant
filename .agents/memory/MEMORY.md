@@ -1,0 +1,1 @@
+- [Google Sheets import boundary](google-sheets-import.md) — imports use public/shareable Google Sheets CSV exports; private files need an OAuth-backed connection.

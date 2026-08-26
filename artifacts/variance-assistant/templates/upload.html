@@ -2,32 +2,34 @@
 
 {% block content %}
 <div class="page-header">
-    <h1>Upload Workbook</h1>
-    <p class="subtitle mt-1">Import financial ledger for variance analysis</p>
+    <h1>Import Financial Data</h1>
+    <p class="subtitle mt-1">Bring an Excel workbook, a text-based PDF, or a public Google Sheet into one analysis flow.</p>
 </div>
 
 {% if not is_mapping %}
 <!-- State 1: Upload -->
-<div class="card fade-in max-w-2xl">
+<div class="source-import-grid max-w-5xl">
     {% if upload_error %}
-    <div class="banner banner-error mb-0" style="border-bottom: 0; border-radius: var(--radius-md) var(--radius-md) 0 0;">
+    <div class="banner banner-error source-import-error">
         <span class="banner-label">Error:</span>
         <span class="banner-message">{{ upload_error }}</span>
     </div>
     {% endif %}
-    <form action="/upload" method="post" enctype="multipart/form-data">
+    <form action="/upload" method="post" enctype="multipart/form-data" class="card source-import-card">
         <div class="card-body">
-            <p class="text-sm text-muted mb-6">Your workbook must contain at minimum: <strong>Category</strong>, <strong>Forecast</strong>, and <strong>Actual</strong> columns.</p>
+            <div class="source-type-label">Local File</div>
+            <h2 class="card-title">Excel or PDF</h2>
+            <p class="text-sm text-muted mb-6">Use a worksheet or a text-based PDF table with <strong>Category</strong>, <strong>Forecast</strong>, and <strong>Actual</strong> columns.</p>
 
             <div class="form-group mb-6">
                 <div class="upload-zone relative">
                     <div class="upload-icon">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                     </div>
-                    <h3 class="text-base font-sans font-medium text-white mb-2">Select or drag your workbook here</h3>
-                    <p class="text-sm text-muted mb-4">Supports .xlsx and .xlsm files.</p>
+                    <h3 class="text-base font-sans font-medium text-white mb-2">Select or drag your file here</h3>
+                    <p class="text-sm text-muted mb-4">Supports .xlsx, .xlsm, and text-based .pdf files.</p>
                     <div class="file-input-wrapper relative inline-block">
-                        <input type="file" name="workbook" id="workbook" accept=".xlsx,.xlsm" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="document.getElementById('file-name').textContent = this.files[0] ? this.files[0].name : 'Browse Files'">
+                        <input type="file" name="workbook" id="workbook" accept=".xlsx,.xlsm,.pdf,application/pdf" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="document.getElementById('file-name').textContent = this.files[0] ? this.files[0].name : 'Browse Files'">
                         <span class="btn btn-secondary pointer-events-none relative z-0" id="file-name">Browse Files</span>
                     </div>
                 </div>
@@ -40,6 +42,25 @@
         </div>
         <div class="card-footer" style="justify-content: flex-end;">
             <button type="submit" class="btn btn-primary">Continue to Mapping</button>
+        </div>
+    </form>
+    <form action="/upload/google-sheet" method="post" class="card source-import-card">
+        <div class="card-body">
+            <div class="source-type-label">Live Spreadsheet</div>
+            <h2 class="card-title">Google Sheets</h2>
+            <p class="text-sm text-muted mb-6">Paste a shareable Google Sheets link. It will be imported as a temporary CSV and follow the same column-mapping process.</p>
+            <div class="form-group mb-6">
+                <label class="data-label" for="google_sheet_url" style="display: block; margin-bottom: 8px;">Google Sheets Link</label>
+                <input type="url" name="google_sheet_url" id="google_sheet_url" class="text-input" required placeholder="https://docs.google.com/spreadsheets/d/...">
+                <p class="source-help">The sheet must be shared as “Anyone with the link” or published to the web. Private-sheet connection support can be added separately.</p>
+            </div>
+            <div class="form-group">
+                <label class="data-label" style="display: block; margin-bottom: 8px;">Analyst Context / Reasoning (Optional)</label>
+                <textarea name="reasoning" rows="3" class="text-input" placeholder="Enter market conditions, known events, or context...">{{ reasoning|default('') }}</textarea>
+            </div>
+        </div>
+        <div class="card-footer" style="justify-content: flex-end;">
+            <button type="submit" class="btn btn-primary">Import Google Sheet</button>
         </div>
     </form>
 </div>
@@ -62,6 +83,8 @@
     <form action="/upload/analyze" method="post">
         <input type="hidden" name="upload_token" value="{{ upload_token|default('') }}">
         <input type="hidden" name="workbook_name" value="{{ workbook_name|default('') }}">
+        <input type="hidden" name="source_kind" value="{{ source_kind|default('workbook') }}">
+        <input type="hidden" name="source_label" value="{{ source_label|default('Workbook') }}">
 
         <div class="card-header" style="display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap;">
             <div>
@@ -72,7 +95,7 @@
                 </div>
             </div>
             <div class="form-group" style="min-width: 220px;">
-                <label class="data-label" style="display: block; margin-bottom: 6px;">Worksheet</label>
+                <label class="data-label" style="display: block; margin-bottom: 6px;">{{ 'PDF Page' if source_kind == 'pdf' else ('Source Table' if source_kind == 'google_sheet' else 'Worksheet') }}</label>
                 <div style="display: flex; gap: 8px;">
                     <select name="selected_sheet" class="select-input">
                         {% for sheet in sheets %}

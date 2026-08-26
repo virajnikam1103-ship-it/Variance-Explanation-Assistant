@@ -592,6 +592,26 @@ select.select-input { appearance: none; background-image: url("data:image/svg+xm
 
 .upload-zone { border: 2px dashed var(--border-strong); border-radius: var(--radius-md); padding: 40px; text-align: center; background: var(--surface-inset); transition: border-color 0.2s, background 0.2s; cursor: pointer; }
 .upload-zone:hover { border-color: var(--brass); background: rgba(166, 128, 61, 0.03); }
+.source-import-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+}
+.source-import-card { margin: 0; }
+.source-import-error { grid-column: 1 / -1; margin: 0; border-radius: var(--radius-md); }
+.source-type-label {
+    color: var(--brass-bright);
+    font: 600 10px/1 var(--font-mono);
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+.source-help {
+    color: var(--text-faint);
+    font-size: 11px;
+    line-height: 1.55;
+    margin: 8px 0 0;
+}
 .upload-icon { color: var(--brass); margin-bottom: 16px; display: inline-block; }
 
 .landing-bg {
@@ -645,6 +665,7 @@ select.select-input { appearance: none; background-image: url("data:image/svg+xm
 }
 
 @media (max-width: 768px) {
+    .source-import-grid { grid-template-columns: 1fr; }
     :root { --sidebar-width: 196px; }
     .app-sidebar { width: var(--sidebar-width); }
     .sidebar-header { padding-left: 12px; padding-right: 12px; }
