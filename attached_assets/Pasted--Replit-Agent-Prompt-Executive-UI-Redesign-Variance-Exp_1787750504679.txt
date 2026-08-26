@@ -1,0 +1,48 @@
+# Replit Agent Prompt — Executive UI Redesign (Variance Explanation Assistant)
+
+Copy everything below the line into Replit's AI Agent chat. This is scoped to **frontend only** — do not touch `app.py`, `logic.py`, `ai_client.py`, or `database.py` route logic, only templates, CSS, and static assets.
+
+---
+
+Redesign the visual design of this app only. Do not change any backend logic, routes, validation rules, database schema, or the AI prompt/response handling — only touch `templates/*.html` and `static/style.css` (and add fonts/icons via CDN if needed). The goal: this should look and feel like a paid, professional finance analytics product — something a CFO's team would trust with board-level numbers — not a student project or generic AI-generated form.
+
+## Design direction: institutional research desk, not consumer app
+
+Avoid the default "AI-generated" looks: no warm cream background with terracotta accents, no near-black page with a single neon accent, no rounded pastel cards. This product should feel closer to a Bloomberg terminal crossed with a private bank's client portal: dense but organized, quiet, confident, numbers-first.
+
+### Color palette (use these exact tokens as CSS variables)
+- `--ink: #0E1420` — near-black navy, primary text and dark surfaces
+- `--slate: #3D4759` — secondary text, borders
+- `--paper: #F7F7F5` — page background, warm-neutral off-white (not stark white, not cream)
+- `--surface: #FFFFFF` — card background
+- `--brass: #A6803D` — muted gold/brass accent, used sparingly for emphasis (active states, key numbers, the admin dashboard's headline stat) — this is the one accent color, not a rainbow of badge colors
+- `--favorable: #1E6B4F` — deep muted green, for favorable variance only
+- `--unfavorable: #A13D3D` — deep muted red/oxblood, for unfavorable variance only
+- `--hairline: #DCDCD6` — 1px borders and dividers throughout, not shadows, as the primary way sections are separated
+
+Classification badges (volume/price/timing/anomaly) should NOT be four loud, different hues. Use one consistent badge shape (small, uppercase, letter-spaced, hairline border) with the text color as the only differentiator, drawn from a restrained sub-palette of `--slate` variants — anomaly can use `--unfavorable` since it deserves attention, the other three should look like siblings, not a rainbow.
+
+### Typography (load via Google Fonts CDN)
+- Display/headings: **IBM Plex Serif**, semibold — used only for page titles and section headers, never body text. This is what signals "research desk," not "SaaS startup."
+- Body and UI text: **IBM Plex Sans** — labels, buttons, table headers, explanations.
+- All numbers (forecast, actual, variance %, confidence): **IBM Plex Mono** with `font-variant-numeric: tabular-nums` — every financial figure in this app must be monospaced and right-aligned so columns of numbers line up like a real ledger. This is the single most important typography rule — do not let numbers render in the body sans font.
+
+### Layout concept
+- A persistent thin top bar: product name set in the display serif, small and left-aligned, with a hairline border-bottom — no big hero banner, no marketing copy, this is a working tool.
+- The input grid (Stage 1) should look like a real spreadsheet/ledger: hairline row dividers, tabular-num columns, generous but not loose row height, a subtle background tint on hover per row, not per cell.
+- Results cards (Stage 9) should be laid out in a tight vertical list, not a loose grid of floating boxes — think "line items on a report," each card a full-width row with: category + classification badge on the left, variance % in large tabular-mono type, explanation text, and the confidence indicator as a **horizontal tick-marked bar** (like a gauge with markers at 0/25/50/75/100, not a rounded pill progress bar) all in one row, so an analyst can scan five drivers top to bottom in seconds.
+- Admin dashboard (Stage 10) should read like an internal reporting page: the aggregate "% of reports with low confidence" stat should be the largest, most brass-colored number on the page, top-left, with a small serif label beneath it — this is the one place the brass accent should feel like a headline metric, everywhere else it should be restrained.
+
+### Signature element
+Give the confidence score its own small horizontal "confidence gauge" component (SVG or CSS), reused everywhere a confidence appears: a thin horizontal track with tick marks at 0/25/50/75/100, a filled portion up to the score, and a small marker/needle at the exact value. This single component, used consistently across results cards and the admin table, should be the one visually distinctive, memorable piece of this UI — everything else stays quiet and disciplined around it.
+
+### Interaction and quality floor
+- Buttons: rectangular or minimally rounded (2px radius max), ink background with paper text for primary actions, hairline-bordered ghost buttons for secondary actions (Add Row, Remove Row) — no big rounded gradient buttons.
+- Visible keyboard focus states on all inputs and buttons (a 2px brass outline is a good choice).
+- Low-confidence and tag-mismatch flags (Stage 7) should use small warning icons plus text in `--unfavorable`, not a jarring red banner — this audience reads flags as "verify this line," not "something crashed."
+- Empty states (no submissions yet on `/admin`) should be a plain, calm message in the serif display font, centered, no illustration or emoji — this product doesn't use emoji or illustrations anywhere.
+- Fully responsive down to a reasonably narrow laptop width is enough — this is a desk tool, not a mobile-first product, but don't let the ledger table break.
+
+Please show me the redesigned homepage/input form first for review before applying the same system to the results and admin pages.
+
+---
