@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "0iV7m1ku8rO155Jkcgwxm"
+uri = "file://.local/outputs/Variance-Explanation-Assistant.pdf"
+type = "pdf"
+title = "Variance Explanation Assistant.pdf"
