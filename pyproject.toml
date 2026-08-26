@@ -8,4 +8,5 @@ dependencies = [
     "openai>=3.3.1",
     "openpyxl>=3.1.5",
     "pymupdf>=1.28.2",
+    "selenium>=4.47.0",
 ]

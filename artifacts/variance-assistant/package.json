@@ -7,6 +7,7 @@
     "dev": "python app.py",
     "build": "python -m compileall app.py logic.py ai_client.py database.py",
     "serve": "python app.py",
+    "test:print": "python -m unittest discover -s tests -p 'test_print_report.py'",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

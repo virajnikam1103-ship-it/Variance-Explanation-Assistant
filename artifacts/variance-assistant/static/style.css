@@ -784,7 +784,7 @@ select.select-input { appearance: none; background-image: url("data:image/svg+xm
     }
 
     .kpi-grid {
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 8px;
         margin-bottom: 16px;
     }
@@ -795,8 +795,8 @@ select.select-input { appearance: none; background-image: url("data:image/svg+xm
 
     .kpi-value {
         color: var(--ink) !important;
-        font-size: 15pt;
-        overflow-wrap: anywhere;
+        font-size: 13pt;
+        white-space: nowrap;
     }
 
     .kpi-value-compact {
